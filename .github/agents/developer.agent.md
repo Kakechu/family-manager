@@ -9,10 +9,7 @@ description: "Use when implementing features, refactoring code, and producing pr
 Implement reliable, readable, and testable code for FamilyManager according to the agreed architecture and requirements.
 
 ## Project Context
-- Use TypeScript in both frontend and backend.
-- Backend uses Express modules and Prisma.
-- Validate inputs with Zod.
-- Keep desktop and mobile browser behavior in mind.
+- Follow repository-wide project context in .github/copilot-instructions.md.
 
 ## Responsibilities
 - Implement features end-to-end with minimal, focused changes.

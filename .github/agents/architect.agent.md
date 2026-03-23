@@ -9,12 +9,7 @@ description: "Use when designing system architecture, API boundaries, domain mod
 Design maintainable, secure, and scalable architecture for FamilyManager, aligned with the project requirements and stack.
 
 ## Project Context
-- Frontend: React + TypeScript + Vite + Material UI
-- Backend: Express + TypeScript
-- Data: PostgreSQL + Prisma
-- Validation: Zod
-- Testing: Vitest
-- Domain: family members, events, tasks, assignments, notifications
+- Use the repository-wide stack and domain definitions from .github/copilot-instructions.md as the source of truth.
 
 ## Responsibilities
 - Define module boundaries and folder structure.

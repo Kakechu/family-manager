@@ -18,6 +18,9 @@ Apply these instructions when editing application source code in src.
 - Validate request payloads and params with Zod.
 - Return consistent error payloads and HTTP status codes.
 - Avoid leaking internal database or stack details in API errors.
+- Keep response envelopes and key field names consistent across endpoints.
+- Keep list endpoint filtering and pagination conventions stable.
+- Preserve API contracts unless a breaking change is explicitly requested.
 
 ## Prisma and Database Safety
 - Keep database operations explicit and readable.
