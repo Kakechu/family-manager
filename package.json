@@ -17,6 +17,7 @@
 		"@biomejs/biome": "^1.9.0"
 	},
 	"prisma": {
-		"schema": "prisma/schema/schema.prisma"
+		"schema": "prisma/schema/schema.prisma",
+		"seed": "node prisma/seeds/seed.cjs"
 	}
 }

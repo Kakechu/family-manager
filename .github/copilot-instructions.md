@@ -54,6 +54,7 @@ When changing backend or persistence logic, align with docs/database_structure.m
 
 ## Agent Role Selection Guidance
 Use these custom agents based on task intent:
+- product-owner: requirement decomposition, issue planning, sequencing, and traceability
 - architect: system design, API contracts, schema boundaries, trade-offs
 - developer: feature implementation and refactoring
 - qa: acceptance criteria, manual test planning, traceability
