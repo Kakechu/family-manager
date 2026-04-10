@@ -10,7 +10,7 @@
 - `id` (PK)  
 - `email` (UNIQUE)  
 - `passwordHash`  
-- `role` (parent / child)  
+- `role` (enum: UserRole)  
 - `familyId` (FK → Family)  
 
 ---
@@ -20,7 +20,7 @@
 - `firstName`  
 - `lastName`  
 - `dateOfBirth` (optional)  
-- `role` (child / adult)  
+- `role` (enum: FamilyMemberRole)  
 - `familyId` (FK → Family)  
 - `userId` (optional FK → User)  
 
@@ -52,7 +52,7 @@
 - `createdBy` (FK → User)  
 - `dueDate`  
 - `isCompleted`  
-- `recurrenceType` (none / daily / weekly / monthly)  
+- `recurrenceType` (enum: TaskRecurrenceType)  
 - `categoryId` (FK → TaskCategory)  
 - `familyId` (FK → Family)  
 
@@ -80,7 +80,7 @@
 - `taskId` (optional FK → Task)  
 - `eventId` (optional FK → Event)  
 - `message`  
-- `type` (taskReminder / eventReminder / other)  
+- `type` (enum: NotificationType)  
 - `isRead`  
 - `createdAt`  
 
@@ -97,6 +97,35 @@
 ## 11. EventAssignment
 - `eventId` (PK, FK → Event)  
 - `familyMemberId` (PK, FK → FamilyMember)  
-- `attendanceStatus` (pending / attending / not_attending / maybe)  
+- `attendanceStatus` (enum: AttendanceStatus)  
 
 > One row = one family member’s participation status for one event
+
+---
+
+## 12. Enums
+
+### UserRole
+- `PARENT`
+- `CHILD`
+
+### FamilyMemberRole
+- `ADULT`
+- `CHILD`
+
+### TaskRecurrenceType
+- `NONE`
+- `DAILY`
+- `WEEKLY`
+- `MONTHLY`
+
+### NotificationType
+- `TASK_REMINDER`
+- `EVENT_REMINDER`
+- `OTHER`
+
+### AttendanceStatus
+- `PENDING`
+- `ATTENDING`
+- `NOT_ATTENDING`
+- `MAYBE`
