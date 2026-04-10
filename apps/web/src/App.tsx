@@ -1,5 +1,5 @@
+import { Container, CssBaseline, Typography } from "@mui/material";
 import React from "react";
-import { CssBaseline, Container, Typography } from "@mui/material";
 
 function App() {
 	return (

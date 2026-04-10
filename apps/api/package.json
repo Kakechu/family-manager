@@ -9,8 +9,8 @@
 		"start": "node dist/index.js",
 		"test": "vitest",
 		"lint": "biome lint .",
-		"format": "biome format --write .",
-		"format:check": "biome format --check ."
+		"format": "biome check --write .",
+		"format:check": "biome ci ."
 	},
 	"dependencies": {
 		"express": "^4.19.0",

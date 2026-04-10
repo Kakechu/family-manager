@@ -8,8 +8,8 @@
 		"preview": "vite preview",
 		"test": "vitest",
 		"lint": "biome lint .",
-		"format": "biome format --write .",
-		"format:check": "biome format --check ."
+		"format": "biome check --write .",
+		"format:check": "biome ci ."
 	},
 	"dependencies": {
 		"react": "^18.3.0",
