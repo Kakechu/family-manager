@@ -1,0 +1,193 @@
+// Prisma schema for FamilyManager
+// Generated from docs/database_structure.md
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  PARENT
+  CHILD
+}
+
+enum FamilyMemberRole {
+  ADULT
+  CHILD
+}
+
+enum TaskRecurrenceType {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum NotificationType {
+  TASK_REMINDER
+  EVENT_REMINDER
+  OTHER
+}
+
+enum AttendanceStatus {
+  PENDING
+  ATTENDING
+  NOT_ATTENDING
+  MAYBE
+}
+
+model Family {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  users   User[]
+  members FamilyMember[]
+  events  Event[]
+  tasks   Task[]
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  email        String    @unique
+  passwordHash String
+  role         UserRole
+
+  familyId Int
+  family   Family   @relation(fields: [familyId], references: [id])
+
+  familyMember FamilyMember?
+
+  eventsCreated Event[]
+  tasksCreated  Task[]
+  comments      Comment[]
+  notifications Notification[]
+}
+
+model FamilyMember {
+  id          Int               @id @default(autoincrement())
+  firstName   String
+  lastName    String
+  dateOfBirth DateTime?
+  role        FamilyMemberRole
+
+  familyId Int
+  family   Family @relation(fields: [familyId], references: [id])
+
+  userId Int? @unique
+  user   User? @relation(fields: [userId], references: [id])
+
+  taskAssignments  TaskAssignment[]
+  eventAssignments EventAssignment[]
+}
+
+model EventCategory {
+  id    Int    @id @default(autoincrement())
+  name  String
+  color String?
+
+  events Event[]
+}
+
+model TaskCategory {
+  id    Int    @id @default(autoincrement())
+  name  String
+  color String?
+
+  tasks Task[]
+}
+
+model Event {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String
+  startTime   DateTime
+  endTime     DateTime
+
+  categoryId Int
+  category   EventCategory @relation(fields: [categoryId], references: [id])
+
+  createdBy Int
+  creator   User @relation(fields: [createdBy], references: [id])
+
+  familyId Int
+  family   Family @relation(fields: [familyId], references: [id])
+
+  assignments  EventAssignment[]
+  notifications Notification[]
+}
+
+model Task {
+  id             Int                @id @default(autoincrement())
+  title          String
+  description    String
+  dueDate        DateTime
+  isCompleted    Boolean            @default(false)
+  recurrenceType TaskRecurrenceType
+
+  categoryId Int
+  category   TaskCategory @relation(fields: [categoryId], references: [id])
+
+  createdBy Int
+  creator   User @relation(fields: [createdBy], references: [id])
+
+  familyId Int
+  family   Family @relation(fields: [familyId], references: [id])
+
+  comments      Comment[]
+  notifications Notification[]
+  assignments   TaskAssignment[]
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  text      String
+  createdAt DateTime @default(now())
+
+  taskId Int
+  task   Task @relation(fields: [taskId], references: [id])
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  message   String
+  type      NotificationType
+  isRead    Boolean @default(false)
+  createdAt DateTime @default(now())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  taskId Int?
+  task   Task? @relation(fields: [taskId], references: [id])
+
+  eventId Int?
+  event   Event? @relation(fields: [eventId], references: [id])
+}
+
+model TaskAssignment {
+  taskId         Int
+  familyMemberId Int
+
+  task         Task         @relation(fields: [taskId], references: [id])
+  familyMember FamilyMember @relation(fields: [familyMemberId], references: [id])
+
+  @@id([taskId, familyMemberId])
+}
+
+model EventAssignment {
+  eventId        Int
+  familyMemberId Int
+  attendanceStatus AttendanceStatus
+
+  event        Event        @relation(fields: [eventId], references: [id])
+  familyMember FamilyMember @relation(fields: [familyMemberId], references: [id])
+
+  @@id([eventId, familyMemberId])
+}
