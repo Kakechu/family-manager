@@ -103,7 +103,7 @@ model TaskCategory {
 model Event {
   id          Int      @id @default(autoincrement())
   title       String
-  description String
+  description String?
   startTime   DateTime
   endTime     DateTime
 
@@ -123,8 +123,8 @@ model Event {
 model Task {
   id             Int                @id @default(autoincrement())
   title          String
-  description    String
-  dueDate        DateTime
+  description    String?
+  dueDate        DateTime?
   isCompleted    Boolean            @default(false)
   recurrenceType TaskRecurrenceType
 
