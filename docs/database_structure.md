@@ -29,7 +29,7 @@
 ## 4. Event
 - `id` (PK)  
 - `title`  
-- `description`  
+- `description` (optional)  
 - `startTime`  
 - `endTime`  
 - `categoryId` (FK → EventCategory)  
@@ -48,9 +48,9 @@
 ## 6. Task
 - `id` (PK)  
 - `title`  
-- `description`  
+- `description` (optional)  
 - `createdBy` (FK → User)  
-- `dueDate`  
+- `dueDate` (optional)  
 - `isCompleted`  
 - `recurrenceType` (enum: TaskRecurrenceType)  
 - `categoryId` (FK → TaskCategory)  
@@ -129,3 +129,9 @@
 - `ATTENDING`
 - `NOT_ATTENDING`
 - `MAYBE`
+
+## Prisma Schema and Migrations Location
+
+- The authoritative Prisma schema for FamilyManager lives at `prisma/schema/schema.prisma`.
+- SQL migrations are stored under `prisma/schema/migrations/` and should be kept in sync with this schema.
+- The top-level `prisma/migrations` folder is currently unused; contributors should work against the `prisma/schema` layout.
