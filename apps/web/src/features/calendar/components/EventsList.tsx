@@ -57,6 +57,7 @@ export const EventsList: React.FC<EventsListProps> = ({
 										key={event.id}
 										event={event}
 										category={categoryById.get(event.categoryId)}
+										categories={categories}
 										members={members}
 										memberById={memberById}
 										onUpdated={onEventUpdated}

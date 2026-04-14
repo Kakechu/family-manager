@@ -17,7 +17,7 @@ import {
 	TextField,
 } from "@mui/material";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
 	addEventAssignments,
 	deleteEventAssignment,
@@ -47,12 +47,32 @@ export const EventFormDialog: React.FC<EventFormDialogProps> = ({
 	const [description, setDescription] = useState(
 		initialEvent?.description ?? "",
 	);
-	const [startTime, setStartTime] = useState(
-		initialEvent?.startTime ?? new Date().toISOString(),
+
+	const formatLocalInput = (date: Date): string => {
+		const year = date.getFullYear();
+		const month = String(date.getMonth() + 1).padStart(2, "0");
+		const day = String(date.getDate()).padStart(2, "0");
+		const hours = String(date.getHours()).padStart(2, "0");
+		const minutes = String(date.getMinutes()).padStart(2, "0");
+		return `${year}-${month}-${day}T${hours}:${minutes}`;
+	};
+
+	const toLocalInputValueFromIso = (iso: string): string => {
+		return formatLocalInput(new Date(iso));
+	};
+
+	const now = new Date();
+	const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+
+	const [startTime, setStartTime] = useState<string>(
+		initialEvent?.startTime
+			? toLocalInputValueFromIso(initialEvent.startTime)
+			: formatLocalInput(now),
 	);
-	const [endTime, setEndTime] = useState(
-		initialEvent?.endTime ??
-			new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+	const [endTime, setEndTime] = useState<string>(
+		initialEvent?.endTime
+			? toLocalInputValueFromIso(initialEvent.endTime)
+			: formatLocalInput(oneHourFromNow),
 	);
 	const [categoryId, setCategoryId] = useState<number | "">(
 		initialEvent?.categoryId ?? "",
@@ -60,6 +80,7 @@ export const EventFormDialog: React.FC<EventFormDialogProps> = ({
 	const [assignedMemberIds, setAssignedMemberIds] = useState<number[]>(
 		initialAssignedMemberIds ?? [],
 	);
+	const [assignedSelectOpen, setAssignedSelectOpen] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | undefined>();
 
@@ -164,15 +185,6 @@ export const EventFormDialog: React.FC<EventFormDialogProps> = ({
 		}
 	};
 
-	const localStartValue = useMemo(
-		() => new Date(startTime).toISOString().slice(0, 16),
-		[startTime],
-	);
-	const localEndValue = useMemo(
-		() => new Date(endTime).toISOString().slice(0, 16),
-		[endTime],
-	);
-
 	return (
 		<Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
 			<DialogTitle>{isEditMode ? "Edit event" : "Add event"}</DialogTitle>
@@ -197,7 +209,7 @@ export const EventFormDialog: React.FC<EventFormDialogProps> = ({
 						label="Start time"
 						type="datetime-local"
 						InputLabelProps={{ shrink: true }}
-						value={localStartValue}
+						value={startTime}
 						onChange={(event) => setStartTime(event.target.value)}
 						fullWidth
 					/>
@@ -205,7 +217,7 @@ export const EventFormDialog: React.FC<EventFormDialogProps> = ({
 						label="End time"
 						type="datetime-local"
 						InputLabelProps={{ shrink: true }}
-						value={localEndValue}
+						value={endTime}
 						onChange={(event) => setEndTime(event.target.value)}
 						fullWidth
 					/>
@@ -236,6 +248,9 @@ export const EventFormDialog: React.FC<EventFormDialogProps> = ({
 							labelId="assigned-members-label"
 							label="Assigned to"
 							multiple
+							open={assignedSelectOpen}
+							onOpen={() => setAssignedSelectOpen(true)}
+							onClose={() => setAssignedSelectOpen(false)}
 							value={assignedMemberIds}
 							onChange={(event) => {
 								const value = event.target.value;
@@ -243,6 +258,7 @@ export const EventFormDialog: React.FC<EventFormDialogProps> = ({
 									? value.map((v) => Number(v))
 									: [];
 								setAssignedMemberIds(ids);
+								setAssignedSelectOpen(false);
 							}}
 							renderValue={(selected) => {
 								if (!selected.length) {

@@ -26,6 +26,7 @@ import { EventFormDialog } from "./EventFormDialog";
 export interface EventListItemProps {
 	event: EventDto;
 	category?: EventCategoryDto;
+	categories: EventCategoryDto[];
 	members: FamilyMemberDto[];
 	memberById: Map<number, FamilyMemberDto>;
 	onUpdated: () => void;
@@ -35,6 +36,7 @@ export interface EventListItemProps {
 export const EventListItem: React.FC<EventListItemProps> = ({
 	event,
 	category,
+	categories,
 	members,
 	memberById,
 	onUpdated,
@@ -202,7 +204,7 @@ export const EventListItem: React.FC<EventListItemProps> = ({
 			<EventFormDialog
 				open={isDialogOpen}
 				onClose={() => setIsDialogOpen(false)}
-				categories={[]}
+				categories={categories}
 				members={members}
 				initialEvent={event}
 				initialAssignedMemberIds={assignedMemberIds}
