@@ -6,6 +6,7 @@
 	"scripts": {
 		"dev:api": "npm run dev --workspace @family-manager/api",
 		"dev:web": "npm run dev --workspace @family-manager/web",
+		"db:reset": "npx prisma migrate reset --schema prisma/schema/schema.prisma --force --skip-generate",
 		"build": "npm run build --workspaces",
 		"test": "npm run test --workspaces",
 		"lint": "npm run lint --workspaces",

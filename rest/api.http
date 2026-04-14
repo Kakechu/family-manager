@@ -1,0 +1,56 @@
+# FamilyManager REST examples
+# Use with VS Code REST Client extension.
+# Ensure the API is running on http://localhost:4000.
+
+@baseUrl = http://localhost:4000/api/v1
+@rootUrl = http://localhost:4000
+@json = application/json
+
+### Health check
+GET {{rootUrl}}/health
+
+### Register a new family (optional flow)
+POST {{baseUrl}}/auth/register
+Content-Type: {{json}}
+
+{
+  "email": "new.parent@example.com",
+  "password": "password123",
+  "familyName": "Example Family",
+  "firstName": "Pat",
+  "lastName": "Parent"
+}
+
+### Login with seeded parent user
+# Default seeded password is "password" unless DEV_PARENT_PASSWORD was set.
+POST {{baseUrl}}/auth/login
+Content-Type: {{json}}
+
+{
+  "email": "anderson.parent@example.com",
+  "password": "password123"
+}
+
+### Get current user (requires auth cookie from login)
+GET {{baseUrl}}/auth/me
+
+### List event categories
+GET {{baseUrl}}/event-categories
+
+### List events for current family
+GET {{baseUrl}}/events
+
+### Create a new event
+POST {{baseUrl}}/events
+Content-Type: {{json}}
+
+{
+  "title": "Sample event from REST client",
+  "description": "Created via api.http",
+  "startTime": "2026-04-14T18:00:00.000Z",
+  "endTime": "2026-04-14T19:00:00.000Z",
+  "categoryId": 1
+}
+
+### List family members
+GET {{baseUrl}}/family-members
