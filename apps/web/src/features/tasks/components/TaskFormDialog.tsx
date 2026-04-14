@@ -19,11 +19,11 @@ import {
 } from "@mui/material";
 import type React from "react";
 import { useState } from "react";
-import { createTask, updateTask } from "../../../services/tasks";
 import {
 	addTaskAssignments,
 	deleteTaskAssignment,
 } from "../../../services/taskAssignments";
+import { createTask, updateTask } from "../../../services/tasks";
 
 export interface TaskFormDialogProps {
 	open: boolean;
@@ -139,9 +139,7 @@ export const TaskFormDialog: React.FC<TaskFormDialogProps> = ({
 
 				if (toRemove.length > 0) {
 					await Promise.all(
-						toRemove.map((id) =>
-								deleteTaskAssignment(initialTask.id, id),
-						),
+						toRemove.map((id) => deleteTaskAssignment(initialTask.id, id)),
 					);
 				}
 
@@ -258,9 +256,7 @@ export const TaskFormDialog: React.FC<TaskFormDialogProps> = ({
 								}
 								return safeMembers
 									.filter((member) => selected.includes(member.id))
-									.map(
-										(member) => `${member.firstName} ${member.lastName}`,
-									)
+									.map((member) => `${member.firstName} ${member.lastName}`)
 									.join(", ");
 							}}
 						>

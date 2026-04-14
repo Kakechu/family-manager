@@ -84,8 +84,8 @@ export const TaskList: React.FC<TaskListProps> = ({
 					const reminder = getReminderStatus(task.dueDate ?? undefined);
 
 					return (
-							<ListItem key={task.id} divider alignItems="flex-start">
-								<ListItemText
+						<ListItem key={task.id} divider alignItems="flex-start">
+							<ListItemText
 								primary={
 									<Box display="flex" alignItems="center" gap={1}>
 										<Checkbox

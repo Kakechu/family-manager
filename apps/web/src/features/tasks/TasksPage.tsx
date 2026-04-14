@@ -15,6 +15,7 @@ import {
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { listFamilyMembers } from "../../services/familyMembers";
+import { listTaskAssignments } from "../../services/taskAssignments";
 import { listTaskCategories } from "../../services/taskCategories";
 import {
 	type ListTasksParams,
@@ -22,7 +23,6 @@ import {
 	listTasks,
 	updateTask,
 } from "../../services/tasks";
-import { listTaskAssignments } from "../../services/taskAssignments";
 import { TaskDetailDialog } from "./components/TaskDetailDialog";
 import { TaskFormDialog } from "./components/TaskFormDialog";
 import { TaskHeader } from "./components/TaskHeader";
