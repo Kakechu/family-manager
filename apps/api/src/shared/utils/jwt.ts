@@ -23,7 +23,6 @@ export const signAccessToken = (params: {
 
 	return jwt.sign(payload, JWT_SECRET, {
 		expiresIn: JWT_EXPIRES_IN as SignOptions["expiresIn"],
-		subject: String(params.userId),
 	});
 };
 
