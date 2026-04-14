@@ -1,5 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { act } from "react-dom/test-utils";
 import { describe, expect, it } from "vitest";
 import App from "./App";
 
@@ -11,11 +12,13 @@ describe("App", () => {
 		// React 18 root API
 		const root = ReactDOM.createRoot(container);
 
-		root.render(
-			<React.StrictMode>
-				<App />
-			</React.StrictMode>,
-		);
+		act(() => {
+			root.render(
+				<React.StrictMode>
+					<App />
+				</React.StrictMode>,
+			);
+		});
 
 		expect(container.innerHTML).toContain("FamilyManager");
 	});
