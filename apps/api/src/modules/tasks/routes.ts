@@ -1,0 +1,297 @@
+import {
+	type Task,
+	createTaskSchema,
+	taskSchema,
+	updateTaskSchema,
+} from "@family-manager/shared";
+import { UserRole } from "@prisma/client";
+import { Router } from "express";
+import { z } from "zod";
+import {
+	type AuthenticatedRequest,
+	authenticate,
+	requireRole,
+} from "../../middleware/auth";
+import { prisma } from "../../shared/db/client";
+import { sendData, sendError, sendList } from "../../shared/http/responses";
+
+const router = Router();
+
+const querySchema = z.object({
+	familyMemberId: z.coerce.number().int().positive().optional(),
+	categoryId: z.coerce.number().int().positive().optional(),
+	isCompleted: z.coerce.boolean().optional(),
+});
+
+const toTaskDto = (task: {
+	id: number;
+	title: string;
+	description: string | null;
+	dueDate: Date | null;
+	isCompleted: boolean;
+	recurrenceType: string;
+	categoryId: number;
+	createdBy: number;
+	familyId: number;
+}): Task => {
+	return taskSchema.parse({
+		id: task.id,
+		title: task.title,
+		description: task.description,
+		// Serialize as ISO string in UTC when present
+		// and null when there is no due date.
+		dueDate: task.dueDate ? task.dueDate.toISOString() : null,
+		isCompleted: task.isCompleted,
+		recurrenceType: task.recurrenceType,
+		categoryId: task.categoryId,
+		createdBy: task.createdBy,
+		familyId: task.familyId,
+	});
+};
+
+router.use(authenticate);
+
+router.get("/", async (req: AuthenticatedRequest, res) => {
+	if (!req.auth) {
+		sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+		return;
+	}
+
+	const parsedQuery = querySchema.safeParse(req.query);
+
+	if (!parsedQuery.success) {
+		sendError(
+			res,
+			400,
+			"VALIDATION_ERROR",
+			"Invalid query parameters",
+			parsedQuery.error.flatten(),
+		);
+		return;
+	}
+
+	const { familyMemberId, categoryId, isCompleted } = parsedQuery.data;
+
+	const where: Parameters<(typeof prisma.task)["findMany"]>[0]["where"] = {
+		familyId: req.auth.familyId,
+		...(categoryId ? { categoryId } : {}),
+		...(typeof isCompleted === "boolean" ? { isCompleted } : {}),
+	};
+
+	if (familyMemberId) {
+		where.assignments = { some: { familyMemberId } };
+	}
+
+	const tasks = await prisma.task.findMany({
+		where,
+		orderBy: [{ dueDate: "asc" }, { id: "asc" }],
+	});
+
+	const dtos = tasks.map(toTaskDto);
+
+	sendList(res, 200, dtos);
+});
+
+router.get("/:id", async (req: AuthenticatedRequest, res) => {
+	if (!req.auth) {
+		sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+		return;
+	}
+
+	const id = Number(req.params.id);
+
+	if (!Number.isFinite(id)) {
+		sendError(res, 400, "VALIDATION_ERROR", "Invalid task id");
+		return;
+	}
+
+	const task = await prisma.task.findFirst({
+		where: {
+			id,
+			familyId: req.auth.familyId,
+		},
+	});
+
+	if (!task) {
+		sendError(res, 404, "TASK_NOT_FOUND", "Task not found");
+		return;
+	}
+
+	const dto = toTaskDto(task);
+
+	sendData(res, 200, dto);
+});
+
+router.post(
+	"/",
+	requireRole([UserRole.PARENT]),
+	async (req: AuthenticatedRequest, res) => {
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
+		}
+
+		const parsed = createTaskSchema.safeParse(req.body);
+
+		if (!parsed.success) {
+			sendError(
+				res,
+				400,
+				"VALIDATION_ERROR",
+				"Invalid task data",
+				parsed.error.flatten(),
+			);
+			return;
+		}
+
+		const { title, description, dueDate, recurrenceType, categoryId } =
+			parsed.data;
+
+		if (recurrenceType !== "NONE" && !dueDate) {
+			sendError(
+				res,
+				400,
+				"VALIDATION_ERROR",
+				"Recurring tasks must have a due date",
+			);
+			return;
+		}
+
+		const created = await prisma.task.create({
+			data: {
+				title,
+				description: description ?? null,
+				// Store as Date in UTC when provided, otherwise null.
+				...(dueDate ? { dueDate: new Date(dueDate) } : { dueDate: null }),
+				isCompleted: false,
+				recurrenceType,
+				categoryId,
+				createdBy: req.auth.userId,
+				familyId: req.auth.familyId,
+			},
+		});
+
+		const dto = toTaskDto(created);
+
+		sendData(res, 201, dto);
+	},
+);
+
+router.patch(
+	"/:id",
+	requireRole([UserRole.PARENT]),
+	async (req: AuthenticatedRequest, res) => {
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
+		}
+
+		const id = Number(req.params.id);
+
+		if (!Number.isFinite(id)) {
+			sendError(res, 400, "VALIDATION_ERROR", "Invalid task id");
+			return;
+		}
+
+		const parsed = updateTaskSchema.safeParse(req.body);
+
+		if (!parsed.success) {
+			sendError(
+				res,
+				400,
+				"VALIDATION_ERROR",
+				"Invalid task data",
+				parsed.error.flatten(),
+			);
+			return;
+		}
+
+		const existing = await prisma.task.findFirst({
+			where: {
+				id,
+				familyId: req.auth.familyId,
+			},
+		});
+
+		if (!existing) {
+			sendError(res, 404, "TASK_NOT_FOUND", "Task not found");
+			return;
+		}
+
+		const {
+			title,
+			description,
+			dueDate,
+			recurrenceType,
+			categoryId,
+			isCompleted,
+		} = parsed.data;
+
+		if (recurrenceType && recurrenceType !== "NONE" && dueDate === null) {
+			// Prevent setting a recurring task to have no due date.
+			sendError(
+				res,
+				400,
+				"VALIDATION_ERROR",
+				"Recurring tasks must have a due date",
+			);
+			return;
+		}
+
+		const updated = await prisma.task.update({
+			where: { id },
+			data: {
+				...(title !== undefined ? { title } : {}),
+				...(description !== undefined
+					? { description: description ?? null }
+					: {}),
+				...(dueDate !== undefined
+					? { dueDate: dueDate ? new Date(dueDate) : null }
+					: {}),
+				...(recurrenceType !== undefined ? { recurrenceType } : {}),
+				...(categoryId !== undefined ? { categoryId } : {}),
+				...(isCompleted !== undefined ? { isCompleted } : {}),
+			},
+		});
+
+		const dto = toTaskDto(updated);
+
+		sendData(res, 200, dto);
+	},
+);
+
+router.delete(
+	"/:id",
+	requireRole([UserRole.PARENT]),
+	async (req: AuthenticatedRequest, res) => {
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
+		}
+
+		const id = Number(req.params.id);
+
+		if (!Number.isFinite(id)) {
+			sendError(res, 400, "VALIDATION_ERROR", "Invalid task id");
+			return;
+		}
+
+		const existing = await prisma.task.findFirst({
+			where: {
+				id,
+				familyId: req.auth.familyId,
+			},
+		});
+
+		if (!existing) {
+			sendError(res, 404, "TASK_NOT_FOUND", "Task not found");
+			return;
+		}
+
+		await prisma.task.delete({ where: { id } });
+
+		res.status(204).send();
+	},
+);
+
+export default router;
