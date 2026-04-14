@@ -68,6 +68,38 @@ async function main() {
 		}),
 	]);
 
+	// Additional family members so assignment and calendar views
+	// have a richer set of people per family.
+	await prisma.familyMember.createMany({
+		data: [
+			{
+				firstName: "Charlie",
+				lastName: "Anderson",
+				role: "CHILD",
+				familyId: familyOne.id,
+			},
+			{
+				firstName: "Daisy",
+				lastName: "Anderson",
+				role: "CHILD",
+				familyId: familyOne.id,
+			},
+			{
+				firstName: "Chris",
+				lastName: "Brown",
+				role: "CHILD",
+				familyId: familyTwo.id,
+			},
+			{
+				firstName: "Ella",
+				lastName: "Brown",
+				role: "CHILD",
+				familyId: familyTwo.id,
+			},
+		],
+		skipDuplicates: true,
+	});
+
 	// Shared event categories
 	const eventCategories = await prisma.eventCategory.createMany({
 		data: [
