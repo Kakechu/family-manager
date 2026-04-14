@@ -1,4 +1,5 @@
 import type {
+	FamilyMemberDto,
 	TaskCategoryDto,
 	TaskDto,
 	TaskRecurrenceType,
@@ -19,12 +20,18 @@ import {
 import type React from "react";
 import { useState } from "react";
 import { createTask, updateTask } from "../../../services/tasks";
+import {
+	addTaskAssignments,
+	deleteTaskAssignment,
+} from "../../../services/taskAssignments";
 
 export interface TaskFormDialogProps {
 	open: boolean;
 	onClose: () => void;
 	categories: TaskCategoryDto[];
+	members: FamilyMemberDto[];
 	initialTask?: TaskDto;
+	initialAssignedMemberIds?: number[];
 	onTaskSaved: (message: string) => void;
 }
 
@@ -39,7 +46,9 @@ export const TaskFormDialog: React.FC<TaskFormDialogProps> = ({
 	open,
 	onClose,
 	categories,
+	members,
 	initialTask,
+	initialAssignedMemberIds,
 	onTaskSaved,
 }) => {
 	const [title, setTitle] = useState(initialTask?.title ?? "");
@@ -57,10 +66,15 @@ export const TaskFormDialog: React.FC<TaskFormDialogProps> = ({
 	const [recurrenceType, setRecurrenceType] = useState<TaskRecurrenceType>(
 		initialTask?.recurrenceType ?? "NONE",
 	);
+	const [assignedMemberIds, setAssignedMemberIds] = useState<number[]>(
+		initialAssignedMemberIds ?? [],
+	);
+	const [assignedSelectOpen, setAssignedSelectOpen] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | undefined>();
 
 	const safeCategories = Array.isArray(categories) ? categories : [];
+	const safeMembers = Array.isArray(members) ? members : [];
 	const isEditMode = Boolean(initialTask);
 
 	const handleSave = async (): Promise<void> => {
@@ -97,9 +111,51 @@ export const TaskFormDialog: React.FC<TaskFormDialogProps> = ({
 
 			if (isEditMode && initialTask) {
 				await updateTask(initialTask.id, payload);
+
+				const current = new Set(initialAssignedMemberIds ?? []);
+				const next = new Set(assignedMemberIds);
+
+				const toAdd: number[] = [];
+				const toRemove: number[] = [];
+
+				for (const id of next) {
+					if (!current.has(id)) {
+						toAdd.push(id);
+					}
+				}
+
+				for (const id of current) {
+					if (!next.has(id)) {
+						toRemove.push(id);
+					}
+				}
+
+				if (toAdd.length > 0) {
+					await addTaskAssignments({
+						taskId: initialTask.id,
+						familyMemberIds: toAdd,
+					});
+				}
+
+				if (toRemove.length > 0) {
+					await Promise.all(
+						toRemove.map((id) =>
+								deleteTaskAssignment(initialTask.id, id),
+						),
+					);
+				}
+
 				onTaskSaved("Task updated");
 			} else {
-				await createTask(payload);
+				const created = await createTask(payload);
+
+				if (assignedMemberIds.length > 0) {
+					await addTaskAssignments({
+						taskId: created.data.id,
+						familyMemberIds: assignedMemberIds,
+					});
+				}
+
 				onTaskSaved("Task created");
 			}
 		} catch (err) {
@@ -172,6 +228,45 @@ export const TaskFormDialog: React.FC<TaskFormDialogProps> = ({
 							{RECURRENCE_OPTIONS.map((option) => (
 								<MenuItem key={option} value={option}>
 									{option === "NONE" ? "Does not repeat" : option}
+								</MenuItem>
+							))}
+						</Select>
+					</FormControl>
+					<FormControl fullWidth>
+						<InputLabel id="task-assigned-members-label">
+							Assigned to
+						</InputLabel>
+						<Select
+							labelId="task-assigned-members-label"
+							label="Assigned to"
+							multiple
+							open={assignedSelectOpen}
+							onOpen={() => setAssignedSelectOpen(true)}
+							onClose={() => setAssignedSelectOpen(false)}
+							value={assignedMemberIds}
+							onChange={(event) => {
+								const value = event.target.value;
+								const ids = Array.isArray(value)
+									? value.map((v) => Number(v))
+									: [];
+								setAssignedMemberIds(ids);
+								setAssignedSelectOpen(false);
+							}}
+							renderValue={(selected) => {
+								if (!selected.length) {
+									return "";
+								}
+								return safeMembers
+									.filter((member) => selected.includes(member.id))
+									.map(
+										(member) => `${member.firstName} ${member.lastName}`,
+									)
+									.join(", ");
+							}}
+						>
+							{safeMembers.map((member) => (
+								<MenuItem key={member.id} value={member.id}>
+									{member.firstName} {member.lastName}
 								</MenuItem>
 							))}
 						</Select>

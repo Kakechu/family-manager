@@ -86,6 +86,7 @@ export const TaskDetailDialog: React.FC<TaskDetailDialogProps> = ({
 	const [initialAssignedMemberIds, setInitialAssignedMemberIds] = useState<
 		number[]
 	>([]);
+	const [assignedSelectOpen, setAssignedSelectOpen] = useState(false);
 	const [assignmentsLoading, setAssignmentsLoading] = useState(false);
 	const [assignmentsError, setAssignmentsError] = useState<
 		string | undefined
@@ -181,7 +182,7 @@ export const TaskDetailDialog: React.FC<TaskDetailDialogProps> = ({
 
 			if (toAdd.length > 0) {
 				await addTaskAssignments({
-					askId: task.id,
+					taskId: task.id,
 					familyMemberIds: toAdd,
 				});
 			}
@@ -286,6 +287,9 @@ export const TaskDetailDialog: React.FC<TaskDetailDialogProps> = ({
 								labelId="task-assigned-members-label"
 								label="Family members"
 								multiple
+								open={assignedSelectOpen}
+								onOpen={() => setAssignedSelectOpen(true)}
+								onClose={() => setAssignedSelectOpen(false)}
 								value={assignedMemberIds}
 								onChange={(event) => {
 									const value = event.target.value;
@@ -293,6 +297,7 @@ export const TaskDetailDialog: React.FC<TaskDetailDialogProps> = ({
 										? value.map((v) => Number(v))
 										: [];
 									setAssignedMemberIds(ids);
+									setAssignedSelectOpen(false);
 								}}
 								renderValue={(selected) => {
 									if (!selected.length) {
@@ -380,7 +385,7 @@ export const TaskDetailDialog: React.FC<TaskDetailDialogProps> = ({
 					onClick={() => void handleSaveAssignments()}
 					disabled={assignmentsLoading}
 				>
-					Save assignments
+					Save
 				</Button>
 			</DialogActions>
 		</Dialog>

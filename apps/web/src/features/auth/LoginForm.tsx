@@ -53,6 +53,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 							label="Email"
 							fullWidth
 							type="email"
+							autoComplete="email"
 							value={email}
 							onChange={(e) => setEmail(e.target.value)}
 							required
@@ -61,6 +62,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 							label="Password"
 							fullWidth
 							type="password"
+							autoComplete="current-password"
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
 							required

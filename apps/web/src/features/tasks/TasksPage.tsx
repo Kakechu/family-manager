@@ -22,6 +22,7 @@ import {
 	listTasks,
 	updateTask,
 } from "../../services/tasks";
+import { listTaskAssignments } from "../../services/taskAssignments";
 import { TaskDetailDialog } from "./components/TaskDetailDialog";
 import { TaskFormDialog } from "./components/TaskFormDialog";
 import { TaskHeader } from "./components/TaskHeader";
@@ -53,6 +54,9 @@ export const TasksPage: React.FC = () => {
 
 	const [isFormOpen, setIsFormOpen] = useState(false);
 	const [editingTask, setEditingTask] = useState<TaskDto | undefined>();
+	const [editingAssignedMemberIds, setEditingAssignedMemberIds] = useState<
+		number[] | undefined
+	>();
 	const [detailTask, setDetailTask] = useState<TaskDto | undefined>();
 	const [successMessage, setSuccessMessage] = useState<string | undefined>();
 
@@ -142,8 +146,22 @@ export const TasksPage: React.FC = () => {
 	};
 
 	const handleEditTask = (task: TaskDto): void => {
-		setEditingTask(task);
-		setIsFormOpen(true);
+		const loadAndOpen = async (): Promise<void> => {
+			try {
+				const response = await listTaskAssignments(task.id);
+				setEditingAssignedMemberIds(
+					response.data.map((assignment) => assignment.familyMemberId),
+				);
+			} catch (error) {
+				console.error("Failed to load task assignments for edit", error);
+				setEditingAssignedMemberIds(undefined);
+			}
+
+			setEditingTask(task);
+			setIsFormOpen(true);
+		};
+
+		void loadAndOpen();
 	};
 
 	const handleDeleteTask = async (task: TaskDto): Promise<void> => {
@@ -170,6 +188,7 @@ export const TasksPage: React.FC = () => {
 	const handleTaskSaved = (message: string): void => {
 		setIsFormOpen(false);
 		setEditingTask(undefined);
+		setEditingAssignedMemberIds(undefined);
 		setSuccessMessage(message);
 		void loadData({
 			familyMemberId: selectedMemberId,
@@ -275,9 +294,12 @@ export const TasksPage: React.FC = () => {
 					onClose={() => {
 						setIsFormOpen(false);
 						setEditingTask(undefined);
+						setEditingAssignedMemberIds(undefined);
 					}}
 					categories={state.categories}
+					members={state.members}
 					initialTask={editingTask}
+					initialAssignedMemberIds={editingAssignedMemberIds}
 					onTaskSaved={handleTaskSaved}
 				/>
 
