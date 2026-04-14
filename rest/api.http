@@ -54,3 +54,6 @@ Content-Type: {{json}}
 
 ### List family members
 GET {{baseUrl}}/family-members
+
+### Run reminder scheduler for current family (requires parent auth)
+POST {{baseUrl}}/notifications/reminders/run
