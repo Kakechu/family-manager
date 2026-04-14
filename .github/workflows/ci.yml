@@ -28,6 +28,5 @@ jobs:
       - name: Format check
         run: npm run format:check
 
-      # To enable tests in CI later, uncomment this step:
       - name: Tests
         run: npm run test
