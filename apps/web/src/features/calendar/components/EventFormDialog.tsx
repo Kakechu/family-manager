@@ -18,6 +18,10 @@ import {
 } from "@mui/material";
 import type React from "react";
 import { useMemo, useState } from "react";
+import {
+	addEventAssignments,
+	deleteEventAssignment,
+} from "../../../services/eventAssignments";
 import { createEvent, updateEvent } from "../../../services/events";
 
 export interface EventFormDialogProps {
@@ -27,7 +31,7 @@ export interface EventFormDialogProps {
 	members: FamilyMemberDto[];
 	initialEvent?: EventDto;
 	initialAssignedMemberIds?: number[];
-	onEventSaved: (message: string) => void;
+	onEventSaved: (message: string, assignedMemberIds: number[]) => void;
 }
 
 export const EventFormDialog: React.FC<EventFormDialogProps> = ({
@@ -101,16 +105,56 @@ export const EventFormDialog: React.FC<EventFormDialogProps> = ({
 					endTime: end.toISOString(),
 					categoryId,
 				});
-				onEventSaved("Event updated");
+
+				const previousIds = new Set(initialAssignedMemberIds ?? []);
+				const nextIds = new Set(assignedMemberIds);
+
+				const toAdd: number[] = [];
+				const toRemove: number[] = [];
+
+				for (const id of nextIds) {
+					if (!previousIds.has(id)) {
+						toAdd.push(id);
+					}
+				}
+
+				for (const id of previousIds) {
+					if (!nextIds.has(id)) {
+						toRemove.push(id);
+					}
+				}
+
+				if (toAdd.length > 0) {
+					await addEventAssignments({
+						eventId: initialEvent.id,
+						familyMemberIds: toAdd,
+					});
+				}
+
+				if (toRemove.length > 0) {
+					await Promise.all(
+						toRemove.map((id) => deleteEventAssignment(initialEvent.id, id)),
+					);
+				}
+
+				onEventSaved("Event updated", assignedMemberIds);
 			} else {
-				await createEvent({
+				const created = await createEvent({
 					title,
 					description: description || null,
 					startTime: start.toISOString(),
 					endTime: end.toISOString(),
 					categoryId,
 				});
-				onEventSaved("Event created");
+
+				if (assignedMemberIds.length > 0) {
+					await addEventAssignments({
+						eventId: created.data.id,
+						familyMemberIds: assignedMemberIds,
+					});
+				}
+
+				onEventSaved("Event created", assignedMemberIds);
 			}
 		} catch (err) {
 			console.error("Failed to save event", err);

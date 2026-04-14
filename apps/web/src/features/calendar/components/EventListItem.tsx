@@ -206,8 +206,10 @@ export const EventListItem: React.FC<EventListItemProps> = ({
 				members={members}
 				initialEvent={event}
 				initialAssignedMemberIds={assignedMemberIds}
-				onEventSaved={async () => {
+				onEventSaved={async (_message, selectedIds) => {
 					setIsDialogOpen(false);
+					setAssignedMemberIds(selectedIds);
+					setAssignmentsLoaded(true);
 					onUpdated();
 				}}
 			/>
