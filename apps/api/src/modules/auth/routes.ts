@@ -1,17 +1,17 @@
-import { Router } from "express";
+import {
+	type AuthUser,
+	authUserSchema,
+	loginRequestSchema,
+	registerRequestSchema,
+} from "@family-manager/shared";
 import { UserRole } from "@prisma/client";
+import { Router } from "express";
+import { type AuthenticatedRequest, authenticate } from "../../middleware/auth";
+import { ACCESS_TOKEN_COOKIE_NAME } from "../../shared/constants/auth";
 import { prisma } from "../../shared/db/client";
 import { sendData, sendError } from "../../shared/http/responses";
 import { signAccessToken } from "../../shared/utils/jwt";
-import { ACCESS_TOKEN_COOKIE_NAME } from "../../shared/constants/auth";
-import { authenticate, type AuthenticatedRequest } from "../../middleware/auth";
 import { hashPassword, verifyPassword } from "../../shared/utils/password";
-import {
-	loginRequestSchema,
-	registerRequestSchema,
-	authUserSchema,
-	type AuthUser,
-} from "@family-manager/shared";
 
 const router = Router();
 

@@ -12,12 +12,14 @@ export const familyMemberSchema = z.object({
 	userId: z.number().int().positive().nullable().optional(),
 });
 
-export const createFamilyMemberSchema = familyMemberSchema.omit({
-	id: true,
-	familyId: true,
-}).extend({
-	dateOfBirth: z.string().datetime().nullable().optional(),
-});
+export const createFamilyMemberSchema = familyMemberSchema
+	.omit({
+		id: true,
+		familyId: true,
+	})
+	.extend({
+		dateOfBirth: z.string().datetime().nullable().optional(),
+	});
 
 export const updateFamilyMemberSchema = createFamilyMemberSchema.partial();
 

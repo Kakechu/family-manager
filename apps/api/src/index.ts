@@ -1,5 +1,5 @@
-import cors from "cors";
 import cookieParser from "cookie-parser";
+import cors from "cors";
 import express from "express";
 import authRouter from "./modules/auth/routes";
 import familyMembersRouter from "./modules/family-members/routes";

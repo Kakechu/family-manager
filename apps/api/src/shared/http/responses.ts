@@ -21,11 +21,7 @@ export interface SingleResponse<T> {
 	data: T;
 }
 
-export const sendData = <T>(
-	res: Response,
-	status: number,
-	data: T,
-): void => {
+export const sendData = <T>(res: Response, status: number, data: T): void => {
 	res.status(status).json({ data } satisfies SingleResponse<T>);
 };
 
@@ -46,12 +42,12 @@ export const sendError = (
 	details?: unknown,
 ): void => {
 	const body: ErrorBody = {
-			error: {
-				code,
-				message,
-				...(details !== undefined ? { details } : {}),
-			},
-		};
+		error: {
+			code,
+			message,
+			...(details !== undefined ? { details } : {}),
+		},
+	};
 
 	res.status(status).json(body);
 };

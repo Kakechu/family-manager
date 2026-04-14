@@ -1,20 +1,20 @@
+import {
+	type FamilyMember,
+	createFamilyMemberSchema,
+	familyMemberRoleSchema,
+	familyMemberSchema,
+	updateFamilyMemberSchema,
+} from "@family-manager/shared";
+import { type FamilyMemberRole, UserRole } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
-import { type FamilyMemberRole, UserRole } from "@prisma/client";
-import { prisma } from "../../shared/db/client";
-import { sendData, sendError, sendList } from "../../shared/http/responses";
 import {
-	authenticate,
 	type AuthenticatedRequest,
+	authenticate,
 	requireRole,
 } from "../../middleware/auth";
-import {
-	createFamilyMemberSchema,
-	familyMemberSchema,
-	familyMemberRoleSchema,
-	updateFamilyMemberSchema,
-	type FamilyMember,
-} from "@family-manager/shared";
+import { prisma } from "../../shared/db/client";
+import { sendData, sendError, sendList } from "../../shared/http/responses";
 
 const router = Router();
 

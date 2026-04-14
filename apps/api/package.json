@@ -8,9 +8,9 @@
 		"build": "tsc -p tsconfig.build.json",
 		"start": "node dist/index.js",
 		"test": "vitest",
-		"lint": "biome lint .",
-		"format": "biome check --write .",
-		"format:check": "biome ci ."
+		"lint": "biome lint src",
+		"format": "biome check --write src",
+		"format:check": "biome ci src"
 	},
 	"dependencies": {
 		"@family-manager/shared": "0.1.0",

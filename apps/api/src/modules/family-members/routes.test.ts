@@ -1,11 +1,11 @@
-import express, { type NextFunction, type Response } from "express";
 import cookieParser from "cookie-parser";
+import express, { type NextFunction, type Response } from "express";
 import request from "supertest";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import familyMembersRouter from "./routes";
 import type { FamilyMember } from "@family-manager/shared";
 import type { AuthenticatedRequest } from "../../middleware/auth";
+import familyMembersRouter from "./routes";
 
 vi.mock("../../middleware/auth", () => {
 	return {
