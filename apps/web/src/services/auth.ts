@@ -19,3 +19,7 @@ export const getCurrentUser = async (): Promise<AuthUser> => {
 	const response = await apiClient.get<AuthResponse>("/auth/me");
 	return response.data.data;
 };
+
+export const logout = async (): Promise<void> => {
+	await apiClient.post("/auth/logout");
+};

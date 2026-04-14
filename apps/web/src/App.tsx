@@ -1,9 +1,15 @@
 import type { AuthUser } from "@family-manager/shared";
-import { Box, CircularProgress, CssBaseline, Typography } from "@mui/material";
+import {
+	Box,
+	Button,
+	CircularProgress,
+	CssBaseline,
+	Typography,
+} from "@mui/material";
 import React, { useEffect, useState } from "react";
 import { LoginForm } from "./features/auth/LoginForm";
 import { CalendarPage } from "./features/calendar/CalendarPage";
-import { getCurrentUser } from "./services/auth";
+import { getCurrentUser, logout } from "./services/auth";
 
 function App() {
 	const [authUser, setAuthUser] = useState<AuthUser | null | undefined>(
@@ -33,13 +39,37 @@ function App() {
 		setAuthError(undefined);
 	};
 
+	const handleLogout = async (): Promise<void> => {
+		try {
+			await logout();
+		} finally {
+			setAuthUser(null);
+		}
+	};
+
 	return (
 		<>
 			<CssBaseline />
 			<Box sx={{ mt: 4, mb: 4 }}>
-				<Typography variant="h4" component="h1" align="center" gutterBottom>
-					FamilyManager
-				</Typography>
+				<Box
+					display="flex"
+					justifyContent="space-between"
+					alignItems="center"
+					mb={2}
+				>
+					<Typography variant="h4" component="h1">
+						FamilyManager
+					</Typography>
+					{authUser && (
+						<Button
+							variant="text"
+							color="inherit"
+							onClick={() => void handleLogout()}
+						>
+							Logout
+						</Button>
+					)}
+				</Box>
 				{checkingAuth ? (
 					<Box display="flex" justifyContent="center" mt={4}>
 						<CircularProgress />
