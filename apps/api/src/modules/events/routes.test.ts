@@ -114,4 +114,45 @@ describe("events routes", () => {
 		expect(body.data.id).toBe(2);
 		expect(body.data.familyId).toBe(10);
 	});
+
+	it("applies family member filtering with includeUnassigned flag", async () => {
+		(
+			prismaMock.event.findMany as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue([]);
+
+		const app = buildApp();
+
+		await request(app)
+			.get("/api/v1/events")
+			.query({ familyMemberId: 100, includeUnassigned: true });
+
+		expect(prismaMock.event.findMany).toHaveBeenCalledWith({
+			where: {
+				familyId: 10,
+				AND: [
+					{
+						OR: [
+							{ assignments: { some: { familyMemberId: 100 } } },
+							{ assignments: { none: {} } },
+						],
+					},
+				],
+			},
+			orderBy: { startTime: "asc" },
+		});
+	});
+
+	it("returns 400 for invalid date range query", async () => {
+		const app = buildApp();
+
+		const response = await request(app)
+			.get("/api/v1/events")
+			.query({ from: "not-a-date" });
+
+		expect(response.status).toBe(400);
+		expect(response.body.error).toBeDefined();
+		expect(response.body.error.code).toBe("VALIDATION_ERROR");
+		// Ensure no database query is performed when validation fails
+		expect(prismaMock.event.findMany).not.toHaveBeenCalled();
+	});
 });
