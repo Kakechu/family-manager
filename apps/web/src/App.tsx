@@ -1,18 +1,17 @@
-import { Container, CssBaseline, Typography } from "@mui/material";
+import { Box, CssBaseline, Typography } from "@mui/material";
 import React from "react";
+import { CalendarPage } from "./features/calendar/CalendarPage";
 
 function App() {
 	return (
 		<>
 			<CssBaseline />
-			<Container maxWidth="sm" sx={{ mt: 4 }}>
-				<Typography variant="h4" component="h1" gutterBottom>
+			<Box sx={{ mt: 4, mb: 4 }}>
+				<Typography variant="h4" component="h1" align="center" gutterBottom>
 					FamilyManager
 				</Typography>
-				<Typography>
-					Frontend is running. Hook this up to the API next.
-				</Typography>
-			</Container>
+				<CalendarPage />
+			</Box>
 		</>
 	);
 }
