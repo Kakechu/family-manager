@@ -1,0 +1,153 @@
+import cookieParser from "cookie-parser";
+import express, { type NextFunction, type Response } from "express";
+import request from "supertest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { Comment } from "@family-manager/shared";
+import type { AuthenticatedRequest } from "../../middleware/auth";
+import commentsRouter from "./routes";
+
+vi.mock("../../middleware/auth", () => {
+	return {
+		authenticate: (
+			req: AuthenticatedRequest,
+			_res: Response,
+			next: NextFunction,
+		): void => {
+			// Attach a fake auth context
+			req.auth = { userId: 1, familyId: 10, role: "PARENT" };
+			next();
+		},
+		requireRole:
+			() =>
+			(
+				_req: AuthenticatedRequest,
+				_res: Response,
+				next: NextFunction,
+			): void => {
+				next();
+			},
+	};
+});
+
+const prismaMock = vi.hoisted(() => ({
+	task: {
+		findFirst: vi.fn(),
+	},
+	comment: {
+		findMany: vi.fn(),
+		create: vi.fn(),
+	},
+}));
+
+vi.mock("../../shared/db/client", () => {
+	return {
+		prisma: prismaMock,
+	};
+});
+
+const buildApp = () => {
+	const app = express();
+	app.use(express.json());
+	app.use(cookieParser());
+	app.use("/api/v1/comments", commentsRouter);
+	return app;
+};
+
+describe("comments routes", () => {
+	beforeEach(() => {
+		vi.resetAllMocks();
+	});
+
+	it("lists comments for a task within the same family", async () => {
+		(
+			prismaMock.task.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 1,
+			familyId: 10,
+		});
+
+		(
+			prismaMock.comment.findMany as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue([
+			{
+				id: 1,
+				text: "First comment",
+				createdAt: new Date("2026-04-15T10:00:00.000Z"),
+				taskId: 1,
+				userId: 1,
+			},
+		]);
+
+		const app = buildApp();
+
+		const response = await request(app)
+			.get("/api/v1/comments")
+			.query({ taskId: 1 });
+
+		expect(response.status).toBe(200);
+		const body = response.body as { data: Comment[] };
+		expect(body.data).toHaveLength(1);
+		expect(body.data[0].text).toBe("First comment");
+	});
+
+	it("returns 404 when listing comments for a task outside the family", async () => {
+		(
+			prismaMock.task.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue(null);
+
+		const app = buildApp();
+
+		const response = await request(app)
+			.get("/api/v1/comments")
+			.query({ taskId: 999 });
+
+		expect(response.status).toBe(404);
+		expect(response.body.error).toBeDefined();
+		expect(response.body.error.code).toBe("TASK_NOT_FOUND");
+	});
+
+	it("creates a comment for a task in the same family", async () => {
+		(
+			prismaMock.task.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 1,
+			familyId: 10,
+		});
+
+		(
+			prismaMock.comment.create as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 2,
+			text: "New comment",
+			createdAt: new Date("2026-04-15T11:00:00.000Z"),
+			taskId: 1,
+			userId: 1,
+		});
+
+		const app = buildApp();
+
+		const response = await request(app).post("/api/v1/comments").send({
+			taskId: 1,
+			text: "New comment",
+		});
+
+		expect(response.status).toBe(201);
+		const body = response.body as { data: Comment };
+		expect(body.data.id).toBe(2);
+		expect(body.data.taskId).toBe(1);
+		expect(body.data.userId).toBe(1);
+	});
+
+	it("rejects invalid comment payload", async () => {
+		const app = buildApp();
+
+		const response = await request(app).post("/api/v1/comments").send({
+			text: "",
+		});
+
+		expect(response.status).toBe(400);
+		expect(response.body.error).toBeDefined();
+		expect(response.body.error.code).toBe("VALIDATION_ERROR");
+	});
+});
