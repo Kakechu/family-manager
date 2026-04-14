@@ -3,7 +3,7 @@ const bcrypt = require("bcryptjs");
 
 const prisma = new PrismaClient();
 
-const PARENT_SEED_PASSWORD = process.env.DEV_PARENT_PASSWORD || "password";
+const PARENT_SEED_PASSWORD = process.env.DEV_PARENT_PASSWORD || "password123";
 const SALT_ROUNDS = 12;
 
 async function getOrCreateParent(email, familyId) {
