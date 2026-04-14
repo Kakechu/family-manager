@@ -6,6 +6,7 @@ export const commentSchema = z.object({
 	createdAt: z.string().datetime(),
 	taskId: z.number().int().positive(),
 	userId: z.number().int().positive(),
+	authorName: z.string().min(1).optional(),
 });
 
 export const createCommentSchema = z.object({

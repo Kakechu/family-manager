@@ -21,13 +21,28 @@ const toCommentDto = (comment: {
 	createdAt: Date;
 	taskId: number;
 	userId: number;
+	user?: {
+		familyMember?: {
+			firstName: string;
+			lastName: string;
+		} | null;
+		email: string;
+	} | null;
 }): Comment => {
+	let authorName: string | undefined;
+	if (comment.user?.familyMember) {
+		authorName = `${comment.user.familyMember.firstName} ${comment.user.familyMember.lastName}`;
+	} else if (comment.user?.email) {
+		authorName = comment.user.email.split("@")[0];
+	}
+
 	return commentSchema.parse({
 		id: comment.id,
 		text: comment.text,
 		createdAt: comment.createdAt.toISOString(),
 		taskId: comment.taskId,
 		userId: comment.userId,
+		authorName,
 	});
 };
 
@@ -69,6 +84,13 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
 	const comments = await prisma.comment.findMany({
 		where: { taskId },
 		orderBy: { createdAt: "asc" },
+		include: {
+			user: {
+				include: {
+					familyMember: true,
+				},
+			},
+		},
 	});
 
 	const dtos = comments.map(toCommentDto);

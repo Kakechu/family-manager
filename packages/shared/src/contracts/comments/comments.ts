@@ -4,6 +4,7 @@ export interface CommentDto {
 	createdAt: string;
 	taskId: number;
 	userId: number;
+	authorName?: string;
 }
 
 export interface CreateCommentRequestDto {

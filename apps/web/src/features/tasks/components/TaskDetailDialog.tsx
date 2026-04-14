@@ -194,6 +194,10 @@ export const TaskDetailDialog: React.FC<TaskDetailDialogProps> = ({
 			}
 
 			setInitialAssignedMemberIds(assignedMemberIds);
+
+			// Close the dialog after a successful save so changes
+			// are applied and the user returns to the task list.
+			onClose();
 		} catch (error) {
 			console.error("Failed to save task assignments", error);
 			setAssignmentsError("Failed to save assignments. Please try again.");
@@ -353,7 +357,7 @@ export const TaskDetailDialog: React.FC<TaskDetailDialogProps> = ({
 									{comments.map((comment) => (
 										<Box key={comment.id}>
 											<Typography variant="caption" color="text.secondary">
-												User #{comment.userId} –{" "}
+												{comment.authorName ?? `User #${comment.userId}`} –{" "}
 												{new Date(comment.createdAt).toLocaleString()}
 											</Typography>
 											<Typography variant="body2">{comment.text}</Typography>

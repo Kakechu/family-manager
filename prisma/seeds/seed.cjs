@@ -56,6 +56,7 @@ async function main() {
 				lastName: "Anderson",
 				role: "ADULT",
 				familyId: familyOne.id,
+				userId: andersonParent.id,
 			},
 		}),
 		prisma.familyMember.create({
@@ -64,6 +65,7 @@ async function main() {
 				lastName: "Brown",
 				role: "ADULT",
 				familyId: familyTwo.id,
+				userId: brownParent.id,
 			},
 		}),
 	]);
