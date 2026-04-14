@@ -4,8 +4,8 @@ import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AuthenticatedRequest } from "../../middleware/auth";
-import notificationsRouter from "./routes";
 import { runFamilyReminderScheduler } from "./reminder-scheduler";
+import notificationsRouter from "./routes";
 
 vi.mock("../../middleware/auth", () => {
 	return {
