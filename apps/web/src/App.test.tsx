@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { describe, expect, it } from "vitest";
 import App from "./App";
 
 // Basic smoke test to ensure App renders without crashing into a detached DOM node.
