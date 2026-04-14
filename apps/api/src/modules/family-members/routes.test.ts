@@ -30,7 +30,8 @@ vi.mock("../../middleware/auth", () => {
 	};
 });
 
-const prismaMock = {
+// Use vi.hoisted so prismaMock is initialized safely before mocked module evaluation
+const prismaMock = vi.hoisted(() => ({
 	familyMember: {
 		findMany: vi.fn(),
 		create: vi.fn(),
@@ -38,7 +39,7 @@ const prismaMock = {
 		update: vi.fn(),
 		delete: vi.fn(),
 	},
-};
+}));
 
 vi.mock("../../shared/db/client", () => {
 	return {
