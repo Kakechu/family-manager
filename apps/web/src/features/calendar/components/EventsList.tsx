@@ -5,6 +5,7 @@ import type {
 } from "@family-manager/shared";
 import { Box, Chip, Divider, Paper, Stack, Typography } from "@mui/material";
 import type React from "react";
+import { EventListItem } from "./EventListItem";
 
 export interface EventGroup {
 	date: string;
