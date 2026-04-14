@@ -4,7 +4,8 @@ import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import authRouter from "./routes";
 
-const prismaMock = {
+// Use vi.hoisted so prismaMock is initialized safely before mocked module evaluation
+const prismaMock = vi.hoisted(() => ({
 	user: {
 		findUnique: vi.fn(),
 		create: vi.fn(),
@@ -15,7 +16,7 @@ const prismaMock = {
 	familyMember: {
 		create: vi.fn(),
 	},
-};
+}));
 
 // Mock Prisma client and password helpers
 vi.mock("../../shared/db/client", () => {
