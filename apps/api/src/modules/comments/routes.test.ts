@@ -3,7 +3,7 @@ import express, { type NextFunction, type Response } from "express";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { MAX_COMMENT_LENGTH, type Comment } from "@family-manager/shared";
+import { type Comment, MAX_COMMENT_LENGTH } from "@family-manager/shared";
 import type { AuthenticatedRequest } from "../../middleware/auth";
 import commentsRouter from "./routes";
 
@@ -45,12 +45,12 @@ const prismaMock = vi.hoisted(() => ({
 		findMany: vi.fn(),
 		create: vi.fn(),
 	},
-		familyMember: {
-			findFirst: vi.fn(),
-		},
-		taskAssignment: {
-			findFirst: vi.fn(),
-		},
+	familyMember: {
+		findFirst: vi.fn(),
+	},
+	taskAssignment: {
+		findFirst: vi.fn(),
+	},
 }));
 
 vi.mock("../../shared/db/client", () => {
@@ -318,10 +318,12 @@ describe("comments routes", () => {
 	it("rejects overly long comment payloads", async () => {
 		const app = buildApp();
 
-		const response = await request(app).post("/api/v1/comments").send({
-			taskId: 1,
-			text: "a".repeat(MAX_COMMENT_LENGTH + 1),
-		});
+		const response = await request(app)
+			.post("/api/v1/comments")
+			.send({
+				taskId: 1,
+				text: "a".repeat(MAX_COMMENT_LENGTH + 1),
+			});
 
 		expect(response.status).toBe(400);
 		expect(response.body.error.code).toBe("VALIDATION_ERROR");

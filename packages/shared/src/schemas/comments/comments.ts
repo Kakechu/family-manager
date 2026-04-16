@@ -16,7 +16,10 @@ export const createCommentSchema = z.object({
 	text: z
 		.string()
 		.min(1)
-		.max(MAX_COMMENT_LENGTH, `Comment must be ${MAX_COMMENT_LENGTH} characters or fewer`),
+		.max(
+			MAX_COMMENT_LENGTH,
+			`Comment must be ${MAX_COMMENT_LENGTH} characters or fewer`,
+		),
 });
 
 export type Comment = z.infer<typeof commentSchema>;
