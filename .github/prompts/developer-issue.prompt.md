@@ -10,6 +10,13 @@ The user will provide an issue identifier as chat input (for example `#2`, `2`, 
 
 Your tasks:
 
+0. Resolve target agent from issue flags (source of truth)
+  - Read issue labels/flags and find one in the format `agent:<name>`.
+  - Allowed names: architect, developer, product-owner, qa, reviewer, security-reviewer, testing-engineer, ui-ux-designer.
+  - If exactly one valid `agent:<name>` flag exists, delegate implementation to that exact agent via `runSubagent`.
+  - If none exists, default to `developer`.
+  - If multiple conflicting `agent:<name>` flags exist, stop and ask the user to choose one.
+
 1. Understand the issue
 	- Resolve the issue details from the given identifier using available tools or repository context (title, description/body, labels, acceptance criteria, dependencies).
 	- Restate the issue in your own words and highlight any ambiguities or missing information.

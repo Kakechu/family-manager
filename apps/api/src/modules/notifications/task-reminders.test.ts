@@ -1,3 +1,4 @@
+import type { PrismaClient } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 import {
 	createEventReminderNotification,
@@ -21,7 +22,7 @@ describe("createTaskDeadlineNotification", () => {
 			notification: {
 				create: createMock,
 			},
-		} as const;
+		} as unknown as Pick<PrismaClient, "notification">;
 
 		const result = await createTaskDeadlineNotification({
 			prisma,
@@ -66,7 +67,7 @@ describe("createEventReminderNotification", () => {
 			notification: {
 				create: createMock,
 			},
-		} as const;
+		} as unknown as Pick<PrismaClient, "notification">;
 
 		const result = await createEventReminderNotification({
 			prisma,
