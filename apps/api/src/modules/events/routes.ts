@@ -4,7 +4,7 @@ import {
 	eventSchema,
 	updateEventSchema,
 } from "@family-manager/shared";
-import { UserRole } from "@prisma/client";
+import { type Prisma, UserRole } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import {
@@ -71,7 +71,7 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
 	const { from, to, familyMemberId, categoryId, includeUnassigned } =
 		parsedQuery.data;
 
-	const where: Parameters<(typeof prisma.event)["findMany"]>[0]["where"] = {
+	const where: Prisma.EventWhereInput = {
 		familyId: req.auth.familyId,
 		...(categoryId ? { categoryId } : {}),
 		...(from || to
