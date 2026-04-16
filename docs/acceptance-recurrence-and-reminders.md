@@ -11,6 +11,8 @@ This document defines acceptance and exploratory test scenarios for:
 
 It complements the functional and non-functional requirements in project_description.md and the technical design in notification-scheduling-and-reminders.md and ux-notifications-and-reminders.md.
 
+The master requirement traceability and acceptance matrix lives in [requirement-traceability-and-acceptance-matrix.md](requirement-traceability-and-acceptance-matrix.md). This document serves as the detailed appendix for the recurrence, reminder, timezone, overlap, and notification UX scenario families.
+
 ### 1.1 Linked Requirements
 
 Functional:
