@@ -9,6 +9,7 @@ import {
 import React, { useEffect, useState } from "react";
 import { LoginForm } from "./features/auth/LoginForm";
 import { CalendarPage } from "./features/calendar/CalendarPage";
+import { FamilyMembersPage } from "./features/family-members/FamilyMembersPage";
 import { TasksPage } from "./features/tasks/TasksPage";
 import { getCurrentUser, logout } from "./services/auth";
 
@@ -18,9 +19,9 @@ function App() {
 	);
 	const [checkingAuth, setCheckingAuth] = useState(true);
 	const [authError, setAuthError] = useState<string | undefined>();
-	const [activeView, setActiveView] = useState<"calendar" | "tasks">(
-		"calendar",
-	);
+	const [activeView, setActiveView] = useState<
+		"calendar" | "tasks" | "family-members"
+	>("calendar");
 
 	useEffect(() => {
 		const check = async (): Promise<void> => {
@@ -82,6 +83,13 @@ function App() {
 								Tasks
 							</Button>
 							<Button
+								variant={activeView === "family-members" ? "contained" : "text"}
+								color="inherit"
+								onClick={() => setActiveView("family-members")}
+							>
+								Family members
+							</Button>
+							<Button
 								variant="text"
 								color="inherit"
 								onClick={() => void handleLogout()}
@@ -98,8 +106,10 @@ function App() {
 				) : authUser ? (
 					activeView === "calendar" ? (
 						<CalendarPage />
-					) : (
+					) : activeView === "tasks" ? (
 						<TasksPage />
+					) : (
+						<FamilyMembersPage />
 					)
 				) : (
 					<LoginForm onLoginSuccess={handleLoginSuccess} />
