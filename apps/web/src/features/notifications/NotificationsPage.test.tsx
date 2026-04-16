@@ -1,7 +1,7 @@
 import type { NotificationDto } from "@family-manager/shared";
 import { fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NotificationsPage } from "./NotificationsPage";
 
 const sampleNotifications: NotificationDto[] = [
@@ -28,6 +28,15 @@ const sampleNotifications: NotificationDto[] = [
 ];
 
 describe("NotificationsPage", () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-04-16T10:00:00.000Z"));
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	it("renders loading state", () => {
 		render(
 			<NotificationsPage
@@ -80,7 +89,40 @@ describe("NotificationsPage", () => {
 		expect(onRefresh).toHaveBeenCalledTimes(1);
 	});
 
-	it("renders unread and read states and handles mark actions", () => {
+	it("renders unread and read notifications with status-specific controls", () => {
+		const onMarkRead = vi.fn().mockResolvedValue(undefined);
+
+		render(
+			<NotificationsPage
+				notifications={sampleNotifications}
+				loading={false}
+				markingAllRead={false}
+				markingReadIds={[]}
+				onRefresh={vi.fn()}
+				onMarkRead={onMarkRead}
+				onMarkAllRead={vi.fn()}
+			/>,
+		);
+
+		expect(screen.getByText("1 unread notification")).toBeInTheDocument();
+		expect(
+			screen.getByLabelText(/Take out trash, Unread notification/i),
+		).toBeInTheDocument();
+		expect(
+			screen.getByLabelText(/School meeting, Read notification/i),
+		).toBeInTheDocument();
+
+		const markReadButtons = screen.getAllByRole("button", {
+			name: /Mark as read/i,
+		});
+		expect(markReadButtons[0]).toBeEnabled();
+		expect(markReadButtons[1]).toBeDisabled();
+
+		fireEvent.click(markReadButtons[0]);
+		expect(onMarkRead).toHaveBeenCalledWith(1);
+	});
+
+	it("calls mark-all handler when unread notifications exist", () => {
 		const onMarkRead = vi.fn().mockResolvedValue(undefined);
 		const onMarkAllRead = vi.fn().mockResolvedValue(undefined);
 
@@ -96,20 +138,10 @@ describe("NotificationsPage", () => {
 			/>,
 		);
 
-		expect(
-			screen.getByText(/2 unread notifications|1 unread notification/i),
-		).toBeInTheDocument();
-		expect(screen.getAllByText(/Unread|Read/i).length).toBeGreaterThanOrEqual(
-			2,
-		);
+		expect(screen.getByText("1 unread notification")).toBeInTheDocument();
 
 		fireEvent.click(screen.getByRole("button", { name: /Mark all as read/i }));
 		expect(onMarkAllRead).toHaveBeenCalledTimes(1);
-
-		const markReadButtons = screen.getAllByRole("button", {
-			name: /Mark as read/i,
-		});
-		fireEvent.click(markReadButtons[0]);
-		expect(onMarkRead).toHaveBeenCalledWith(1);
+		expect(onMarkRead).not.toHaveBeenCalled();
 	});
 });

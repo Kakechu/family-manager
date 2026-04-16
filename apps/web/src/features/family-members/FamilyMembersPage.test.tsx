@@ -38,6 +38,7 @@ describe("FamilyMembersPage", () => {
 		expect(
 			await screen.findByText(/First name is required/i),
 		).toBeInTheDocument();
+		expect(createFamilyMember).not.toHaveBeenCalled();
 	});
 
 	it("adds a member and appends it to the list", async () => {

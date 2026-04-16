@@ -99,6 +99,36 @@ describe("App", () => {
 		).toBeInTheDocument();
 	});
 
+	it("marks a single notification as read and updates the unread count", async () => {
+		render(
+			<React.StrictMode>
+				<App />
+			</React.StrictMode>,
+		);
+
+		const notificationsButton = await screen.findByRole("button", {
+			name: /Notifications/i,
+		});
+		fireEvent.click(notificationsButton);
+
+		expect(
+			await screen.findByText(/2 unread notifications/i),
+		).toBeInTheDocument();
+
+		const markReadButtons = screen.getAllByRole("button", {
+			name: /Mark as read/i,
+		});
+		fireEvent.click(markReadButtons[0]);
+
+		await waitFor(() => {
+			expect(markNotificationRead).toHaveBeenCalledWith(1);
+		});
+
+		expect(
+			await screen.findByText(/1 unread notification/i),
+		).toBeInTheDocument();
+	});
+
 	it("falls back to per-item mark read when mark-all endpoint is missing", async () => {
 		vi.mocked(markAllNotificationsRead).mockRejectedValueOnce({
 			response: {
