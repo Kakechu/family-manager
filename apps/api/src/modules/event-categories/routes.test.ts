@@ -100,4 +100,20 @@ describe("event categories routes", () => {
 		expect(body.data.id).toBe(2);
 		expect(body.data.name).toBe("Hobby");
 	});
+
+	it("returns sanitized 500 response when category creation fails", async () => {
+		(
+			prismaMock.eventCategory.create as unknown as ReturnType<typeof vi.fn>
+		).mockRejectedValue(new Error("db exploded"));
+
+		const app = buildApp();
+
+		const response = await request(app).post("/api/v1/event-categories").send({
+			name: "Hobby",
+		});
+
+		expect(response.status).toBe(500);
+		expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+		expect(response.body.error.details).toBeUndefined();
+	});
 });

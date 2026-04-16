@@ -76,12 +76,13 @@ router.post(
 
 			sendData(res, 201, dto);
 		} catch (error) {
+			// eslint-disable-next-line no-console
+			console.error("task_category_create_failed", error);
 			sendError(
 				res,
 				500,
 				"INTERNAL_SERVER_ERROR",
 				"Failed to create task category",
-				{ error },
 			);
 		}
 	},
