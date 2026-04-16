@@ -4,7 +4,7 @@ import {
 	taskSchema,
 	updateTaskSchema,
 } from "@family-manager/shared";
-import { UserRole } from "@prisma/client";
+import { type Prisma, UserRole } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import {
@@ -72,7 +72,7 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
 
 	const { familyMemberId, categoryId, isCompleted } = parsedQuery.data;
 
-	const where: Parameters<(typeof prisma.task)["findMany"]>[0]["where"] = {
+	const where: Prisma.TaskWhereInput = {
 		familyId: req.auth.familyId,
 		...(categoryId ? { categoryId } : {}),
 		...(typeof isCompleted === "boolean" ? { isCompleted } : {}),
