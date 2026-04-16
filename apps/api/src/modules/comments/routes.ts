@@ -3,6 +3,7 @@ import {
 	commentSchema,
 	createCommentSchema,
 } from "@family-manager/shared";
+import { UserRole } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import { type AuthenticatedRequest, authenticate } from "../../middleware/auth";
@@ -26,14 +27,11 @@ const toCommentDto = (comment: {
 			firstName: string;
 			lastName: string;
 		} | null;
-		email: string;
 	} | null;
 }): Comment => {
 	let authorName: string | undefined;
 	if (comment.user?.familyMember) {
 		authorName = `${comment.user.familyMember.firstName} ${comment.user.familyMember.lastName}`;
-	} else if (comment.user?.email) {
-		authorName = comment.user.email.split("@")[0];
 	}
 
 	return commentSchema.parse({
@@ -131,11 +129,60 @@ router.post("/", async (req: AuthenticatedRequest, res) => {
 		return;
 	}
 
+	if (req.auth.role !== UserRole.PARENT) {
+		const familyMember = await prisma.familyMember.findFirst({
+			where: {
+				userId: req.auth.userId,
+				familyId: req.auth.familyId,
+			},
+			select: {
+				id: true,
+			},
+		});
+
+		if (!familyMember) {
+			sendError(
+				res,
+				403,
+				"FORBIDDEN",
+				"Only parents or task assignees can comment on this task",
+			);
+			return;
+		}
+
+		const assignment = await prisma.taskAssignment.findFirst({
+			where: {
+				taskId,
+				familyMemberId: familyMember.id,
+			},
+			select: {
+				taskId: true,
+			},
+		});
+
+		if (!assignment) {
+			sendError(
+				res,
+				403,
+				"FORBIDDEN",
+				"Only parents or task assignees can comment on this task",
+			);
+			return;
+		}
+	}
+
 	const created = await prisma.comment.create({
 		data: {
 			text,
 			taskId,
 			userId: req.auth.userId,
+		},
+		include: {
+			user: {
+				include: {
+					familyMember: true,
+				},
+			},
 		},
 	});
 
