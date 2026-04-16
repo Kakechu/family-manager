@@ -215,3 +215,67 @@ Preference changes should confirm with a brief message (e.g., "Reminders turned 
 - Advanced filtering (e.g., show only overdue, show only tasks, show only events).
 
 These enhancements should build on the patterns defined here without breaking existing behavior.
+
+## 9. Manual Acceptance and Exploratory Checklist (Issue 79)
+
+This checklist provides release evidence expectations for notification UX behavior on desktop and mobile. Scenario IDs align with requirement-traceability-and-acceptance-matrix.md.
+
+### 9.1 UX-004 - Desktop notifications list access + read-state updates
+
+- Requirements: FR10, FR11, NFR2, NFR6
+- Preconditions:
+  - User is authenticated.
+  - At least one unread event reminder and one unread task reminder are available.
+- Checks:
+  - Open notifications from the desktop app bar icon and confirm unread badge is visible.
+  - Open one notification target and return to the list.
+  - Manually mark another notification as read.
+  - Clear one notification.
+- Expected:
+  - Read-state updates are reflected in both row style and badge count.
+  - Opening a notification target behaves consistently with the selected read-state policy.
+  - Clear action updates the list without focus loss or navigation dead-end.
+- Release evidence:
+  - One short desktop screen recording for the full flow.
+  - One screenshot showing unread vs read visual state.
+
+### 9.2 UX-005 - Mobile notifications list access + read-state updates
+
+- Requirements: FR10, FR11, NFR2, NFR6
+- Preconditions:
+  - User is authenticated on a mobile viewport/device.
+  - Multiple unread notifications are available.
+- Checks:
+  - Open notification screen from mobile navigation.
+  - Mark one item as read with supported action (swipe or tap).
+  - Clear one item and verify undo behavior when present.
+  - Leave screen and re-open list.
+- Expected:
+  - Read-state persists across navigation.
+  - Badge count updates after read, clear, and undo transitions.
+  - Rows remain readable and tappable at mobile sizes.
+- Release evidence:
+  - One short mobile recording of list access and state transitions.
+
+### 9.3 UX-006 - Accessibility checks (keyboard + screen reader semantics)
+
+- Requirements: FR10, FR11, NFR6
+- Preconditions:
+  - Desktop browser with keyboard-only navigation and a screen reader enabled.
+- Checks:
+  - Open notification list without mouse.
+  - Move through list items and actions with keyboard only.
+  - Trigger mark-as-read and clear actions.
+  - Verify announcement text for notification type and read/unread status.
+- Expected:
+  - Focus order is logical and visible at all times.
+  - Notification rows and actions expose clear accessible names.
+  - Read-state semantics are announced consistently when changed.
+- Release evidence:
+  - Keyboard walkthrough recording.
+  - Screen-reader notes or transcript snippet captured by QA.
+
+### 9.4 Blocking gaps and follow-up
+
+- Blocker: If read-state fields are missing or unstable in notification payloads, UX-004 and UX-005 cannot be validated for release.
+- Follow-up: Add stable QA fixture data for mixed read/unread task and event reminders to reduce manual setup time.
