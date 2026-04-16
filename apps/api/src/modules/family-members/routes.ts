@@ -22,6 +22,37 @@ const querySchema = z.object({
 	role: familyMemberRoleSchema.optional(),
 });
 
+const validateLinkedUserForFamilyMember = async (params: {
+	userId: number;
+	familyId: number;
+	excludeFamilyMemberId?: number;
+}): Promise<string | null> => {
+	const user = await prisma.user.findUnique({
+		where: { id: params.userId },
+		select: { id: true, familyId: true },
+	});
+
+	if (!user || user.familyId !== params.familyId) {
+		return "Linked user must belong to the current family";
+	}
+
+	const linkedFamilyMember = await prisma.familyMember.findFirst({
+		where: {
+			userId: params.userId,
+			...(params.excludeFamilyMemberId
+				? { id: { not: params.excludeFamilyMemberId } }
+				: {}),
+		},
+		select: { id: true },
+	});
+
+	if (linkedFamilyMember) {
+		return "Linked user is already associated with another family member";
+	}
+
+	return null;
+};
+
 const toFamilyMemberDto = (member: {
 	id: number;
 	firstName: string;
@@ -102,6 +133,18 @@ router.post(
 
 		const { firstName, lastName, dateOfBirth, role, userId } = parsed.data;
 
+		if (typeof userId === "number") {
+			const validationError = await validateLinkedUserForFamilyMember({
+				userId,
+				familyId: req.auth.familyId,
+			});
+
+			if (validationError) {
+				sendError(res, 400, "VALIDATION_ERROR", validationError);
+				return;
+			}
+		}
+
 		const created = await prisma.familyMember.create({
 			data: {
 				firstName,
@@ -161,6 +204,19 @@ router.patch(
 		}
 
 		const { firstName, lastName, dateOfBirth, role, userId } = parsed.data;
+
+		if (typeof userId === "number") {
+			const validationError = await validateLinkedUserForFamilyMember({
+				userId,
+				familyId: req.auth.familyId,
+				excludeFamilyMemberId: id,
+			});
+
+			if (validationError) {
+				sendError(res, 400, "VALIDATION_ERROR", validationError);
+				return;
+			}
+		}
 
 		const updated = await prisma.familyMember.update({
 			where: { id },

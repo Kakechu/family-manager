@@ -15,10 +15,15 @@ export const authenticate = (
 	next: NextFunction,
 ): void => {
 	try {
+		const authorizationHeader =
+			typeof req.headers.authorization === "string"
+				? req.headers.authorization
+				: undefined;
+
 		const token =
 			req.cookies?.[ACCESS_TOKEN_COOKIE_NAME] ||
-			(typeof req.headers.authorization === "string"
-				? req.headers.authorization.replace("Bearer ", "")
+			(authorizationHeader?.startsWith("Bearer ")
+				? authorizationHeader.slice("Bearer ".length)
 				: undefined);
 
 		if (!token) {

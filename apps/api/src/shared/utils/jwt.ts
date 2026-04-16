@@ -7,7 +7,21 @@ interface JwtPayload {
 	role: UserRole;
 }
 
-const JWT_SECRET: Secret = process.env.AUTH_JWT_SECRET ?? "dev-secret";
+const getJwtSecret = (): Secret => {
+	const configuredSecret = process.env.AUTH_JWT_SECRET?.trim();
+
+	if (configuredSecret) {
+		return configuredSecret;
+	}
+
+	if (process.env.NODE_ENV === "production") {
+		throw new Error("AUTH_JWT_SECRET must be configured in production");
+	}
+
+	return "dev-secret";
+};
+
+const JWT_SECRET: Secret = getJwtSecret();
 const JWT_EXPIRES_IN = process.env.AUTH_JWT_EXPIRES_IN ?? "15m";
 
 export const signAccessToken = (params: {

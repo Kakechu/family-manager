@@ -7,6 +7,10 @@ import type { FamilyMember } from "@family-manager/shared";
 import type { AuthenticatedRequest } from "../../middleware/auth";
 import familyMembersRouter from "./routes";
 
+const authState = vi.hoisted(() => ({
+	role: "PARENT" as "PARENT" | "CHILD",
+}));
+
 vi.mock("../../middleware/auth", () => {
 	return {
 		authenticate: (
@@ -15,16 +19,25 @@ vi.mock("../../middleware/auth", () => {
 			next: NextFunction,
 		): void => {
 			// Attach a fake auth context
-			req.auth = { userId: 1, familyId: 10, role: "PARENT" };
+			req.auth = { userId: 1, familyId: 10, role: authState.role };
 			next();
 		},
 		requireRole:
-			() =>
+			(allowedRoles: Array<"PARENT" | "CHILD">) =>
 			(
-				_req: AuthenticatedRequest,
-				_res: Response,
+				req: AuthenticatedRequest,
+				res: Response,
 				next: NextFunction,
 			): void => {
+				if (!req.auth || !allowedRoles.includes(req.auth.role)) {
+					res.status(403).json({
+						error: {
+							code: "FORBIDDEN",
+							message: "You are not allowed to perform this action",
+						},
+					});
+					return;
+				}
 				next();
 			},
 	};
@@ -38,6 +51,9 @@ const prismaMock = vi.hoisted(() => ({
 		findFirst: vi.fn(),
 		update: vi.fn(),
 		delete: vi.fn(),
+	},
+	user: {
+		findUnique: vi.fn(),
 	},
 }));
 
@@ -58,6 +74,7 @@ const buildApp = () => {
 describe("family members routes", () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
+		authState.role = "PARENT";
 	});
 
 	it("lists family members scoped to family", async () => {
@@ -112,5 +129,43 @@ describe("family members routes", () => {
 		const body = response.body as { data: FamilyMember };
 		expect(body.data.id).toBe(2);
 		expect(body.data.familyId).toBe(10);
+	});
+
+	it("returns 403 when a child user attempts to create a family member", async () => {
+		authState.role = "CHILD";
+
+		const app = buildApp();
+
+		const response = await request(app).post("/api/v1/family-members").send({
+			firstName: "Child",
+			lastName: "One",
+			role: "CHILD",
+		});
+
+		expect(response.status).toBe(403);
+		expect(response.body.error.code).toBe("FORBIDDEN");
+		expect(prismaMock.familyMember.create).not.toHaveBeenCalled();
+	});
+
+	it("rejects linking a user account from another family", async () => {
+		(
+			prismaMock.user.findUnique as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({ id: 99, familyId: 999 });
+
+		const app = buildApp();
+
+		const response = await request(app).post("/api/v1/family-members").send({
+			firstName: "Member",
+			lastName: "Two",
+			role: "ADULT",
+			userId: 99,
+		});
+
+		expect(response.status).toBe(400);
+		expect(response.body.error.code).toBe("VALIDATION_ERROR");
+		expect(response.body.error.message).toBe(
+			"Linked user must belong to the current family",
+		);
+		expect(prismaMock.familyMember.create).not.toHaveBeenCalled();
 	});
 });

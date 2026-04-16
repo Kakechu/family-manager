@@ -8,6 +8,10 @@ import type { AuthenticatedRequest } from "../../middleware/auth";
 import { runFamilyReminderScheduler } from "./reminder-scheduler";
 import notificationsRouter from "./routes";
 
+const authState = vi.hoisted(() => ({
+	role: "PARENT" as "PARENT" | "CHILD",
+}));
+
 vi.mock("../../middleware/auth", () => {
 	return {
 		authenticate: (
@@ -16,16 +20,25 @@ vi.mock("../../middleware/auth", () => {
 			next: NextFunction,
 		): void => {
 			// Attach a fake auth context for a parent in family 10
-			req.auth = { userId: 1, familyId: 10, role: "PARENT" };
+			req.auth = { userId: 1, familyId: 10, role: authState.role };
 			next();
 		},
 		requireRole:
-			() =>
+			(allowedRoles: Array<"PARENT" | "CHILD">) =>
 			(
-				_req: AuthenticatedRequest,
-				_res: Response,
+				req: AuthenticatedRequest,
+				res: Response,
 				next: NextFunction,
 			): void => {
+				if (!req.auth || !allowedRoles.includes(req.auth.role)) {
+					res.status(403).json({
+						error: {
+							code: "FORBIDDEN",
+							message: "You are not allowed to perform this action",
+						},
+					});
+					return;
+				}
 				next();
 			},
 	};
@@ -63,6 +76,7 @@ const buildApp = () => {
 describe("notifications routes - reminder scheduler", () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
+		authState.role = "PARENT";
 	});
 
 	it("runs the family reminder scheduler and returns created counts", async () => {
@@ -92,6 +106,20 @@ describe("notifications routes - reminder scheduler", () => {
 			createdTaskNotifications: 2,
 			createdEventNotifications: 1,
 		});
+	});
+
+	it("returns 403 when a child user attempts to run reminders", async () => {
+		authState.role = "CHILD";
+
+		const app = buildApp();
+
+		const response = await request(app).post(
+			"/api/v1/notifications/reminders/run",
+		);
+
+		expect(response.status).toBe(403);
+		expect(response.body.error.code).toBe("FORBIDDEN");
+		expect(runFamilyReminderScheduler).not.toHaveBeenCalled();
 	});
 });
 

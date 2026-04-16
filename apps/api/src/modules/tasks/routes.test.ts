@@ -7,6 +7,10 @@ import type { Task } from "@family-manager/shared";
 import type { AuthenticatedRequest } from "../../middleware/auth";
 import tasksRouter from "./routes";
 
+const authState = vi.hoisted(() => ({
+	role: "PARENT" as "PARENT" | "CHILD",
+}));
+
 vi.mock("../../middleware/auth", () => {
 	return {
 		authenticate: (
@@ -15,16 +19,25 @@ vi.mock("../../middleware/auth", () => {
 			next: NextFunction,
 		): void => {
 			// Attach a fake auth context
-			req.auth = { userId: 1, familyId: 10, role: "PARENT" };
+			req.auth = { userId: 1, familyId: 10, role: authState.role };
 			next();
 		},
 		requireRole:
-			() =>
+			(allowedRoles: Array<"PARENT" | "CHILD">) =>
 			(
-				_req: AuthenticatedRequest,
-				_res: Response,
+				req: AuthenticatedRequest,
+				res: Response,
 				next: NextFunction,
 			): void => {
+				if (!req.auth || !allowedRoles.includes(req.auth.role)) {
+					res.status(403).json({
+						error: {
+							code: "FORBIDDEN",
+							message: "You are not allowed to perform this action",
+						},
+					});
+					return;
+				}
 				next();
 			},
 	};
@@ -57,6 +70,7 @@ const buildApp = () => {
 describe("tasks routes", () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
+		authState.role = "PARENT";
 	});
 
 	it("lists tasks filtered by family member and completion", async () => {
@@ -297,5 +311,21 @@ describe("tasks routes", () => {
 				dueDate: null,
 			}),
 		});
+	});
+
+	it("returns 403 when a child user attempts to create a task", async () => {
+		authState.role = "CHILD";
+
+		const app = buildApp();
+
+		const response = await request(app).post("/api/v1/tasks").send({
+			title: "Take out trash",
+			recurrenceType: "NONE",
+			categoryId: 1,
+		});
+
+		expect(response.status).toBe(403);
+		expect(response.body.error.code).toBe("FORBIDDEN");
+		expect(prismaMock.task.create).not.toHaveBeenCalled();
 	});
 });
