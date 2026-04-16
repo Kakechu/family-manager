@@ -18,7 +18,7 @@ import {
 	TextField,
 } from "@mui/material";
 import type React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
 	addTaskAssignments,
 	deleteTaskAssignment,
@@ -42,6 +42,14 @@ const RECURRENCE_OPTIONS: TaskRecurrenceType[] = [
 	"MONTHLY",
 ];
 
+const formatDateInput = (isoDueDate?: string | null): string => {
+	if (!isoDueDate) {
+		return "";
+	}
+
+	return new Date(isoDueDate).toISOString().split("T")[0];
+};
+
 export const TaskFormDialog: React.FC<TaskFormDialogProps> = ({
 	open,
 	onClose,
@@ -56,9 +64,7 @@ export const TaskFormDialog: React.FC<TaskFormDialogProps> = ({
 		initialTask?.description ?? "",
 	);
 	const [dueDate, setDueDate] = useState<string | "">(
-		initialTask?.dueDate
-			? new Date(initialTask.dueDate).toISOString().split("T")[0]
-			: "",
+		formatDateInput(initialTask?.dueDate),
 	);
 	const [categoryId, setCategoryId] = useState<number | "">(
 		initialTask?.categoryId ?? "",
@@ -76,6 +82,20 @@ export const TaskFormDialog: React.FC<TaskFormDialogProps> = ({
 	const safeCategories = Array.isArray(categories) ? categories : [];
 	const safeMembers = Array.isArray(members) ? members : [];
 	const isEditMode = Boolean(initialTask);
+
+	useEffect(() => {
+		if (!open) {
+			return;
+		}
+
+		setTitle(initialTask?.title ?? "");
+		setDescription(initialTask?.description ?? "");
+		setDueDate(formatDateInput(initialTask?.dueDate));
+		setCategoryId(initialTask?.categoryId ?? "");
+		setRecurrenceType(initialTask?.recurrenceType ?? "NONE");
+		setAssignedMemberIds(initialAssignedMemberIds ?? []);
+		setError(undefined);
+	}, [open, initialTask, initialAssignedMemberIds]);
 
 	const handleSave = async (): Promise<void> => {
 		setError(undefined);
