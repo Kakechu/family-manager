@@ -174,4 +174,128 @@ describe("tasks routes", () => {
 		expect(response.body.error).toBeDefined();
 		expect(response.body.error.code).toBe("TASK_NOT_FOUND");
 	});
+
+	it("creates a recurring task when a due date is provided", async () => {
+		(
+			prismaMock.task.create as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 2,
+			title: "Empty dishwasher",
+			description: null,
+			// stored as Date in UTC
+			dueDate: new Date("2026-04-16T17:00:00.000Z"),
+			isCompleted: false,
+			recurrenceType: "DAILY",
+			categoryId: 1,
+			createdBy: 1,
+			familyId: 10,
+		});
+
+		const app = buildApp();
+
+		const response = await request(app).post("/api/v1/tasks").send({
+			title: "Empty dishwasher",
+			recurrenceType: "DAILY",
+			categoryId: 1,
+			// client provides UTC ISO string
+			dueDate: "2026-04-16T17:00:00.000Z",
+		});
+
+		expect(response.status).toBe(201);
+		const body = response.body as { data: Task };
+		expect(body.data.id).toBe(2);
+		expect(body.data.recurrenceType).toBe("DAILY");
+		expect(body.data.dueDate).toBe("2026-04-16T17:00:00.000Z");
+
+		expect(prismaMock.task.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({
+					title: "Empty dishwasher",
+					recurrenceType: "DAILY",
+					// server stores Date derived from the ISO string
+					dueDate: new Date("2026-04-16T17:00:00.000Z"),
+				}),
+			}),
+		);
+	});
+
+	it("rejects patch that makes a recurring task have no due date", async () => {
+		(
+			prismaMock.task.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 3,
+			title: "Weekly chore",
+			description: null,
+			dueDate: new Date("2026-04-17T17:00:00.000Z"),
+			isCompleted: false,
+			recurrenceType: "WEEKLY",
+			categoryId: 1,
+			createdBy: 1,
+			familyId: 10,
+		});
+
+		const app = buildApp();
+
+		const response = await request(app)
+			.patch("/api/v1/tasks/3")
+			.send({ recurrenceType: "WEEKLY", dueDate: null });
+
+		expect(response.status).toBe(400);
+		expect(response.body.error).toBeDefined();
+		expect(response.body.error.code).toBe("VALIDATION_ERROR");
+		expect(response.body.error.message).toBe(
+			"Recurring tasks must have a due date",
+		);
+		// ensure Prisma update is never called
+		expect(prismaMock.task.update).not.toHaveBeenCalled();
+	});
+
+	it("allows patching a recurring task back to a non-recurring task while clearing the due date", async () => {
+		(
+			prismaMock.task.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 4,
+			title: "Monthly report",
+			description: null,
+			dueDate: new Date("2026-04-30T18:00:00.000Z"),
+			isCompleted: false,
+			recurrenceType: "MONTHLY",
+			categoryId: 1,
+			createdBy: 1,
+			familyId: 10,
+		});
+
+		(
+			prismaMock.task.update as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 4,
+			title: "Monthly report",
+			description: null,
+			dueDate: null,
+			isCompleted: false,
+			recurrenceType: "NONE",
+			categoryId: 1,
+			createdBy: 1,
+			familyId: 10,
+		});
+
+		const app = buildApp();
+
+		const response = await request(app)
+			.patch("/api/v1/tasks/4")
+			.send({ recurrenceType: "NONE", dueDate: null });
+
+		expect(response.status).toBe(200);
+		const body = response.body as { data: Task };
+		expect(body.data.recurrenceType).toBe("NONE");
+		expect(body.data.dueDate).toBeNull();
+
+		expect(prismaMock.task.update).toHaveBeenCalledWith({
+			where: { id: 4 },
+			data: expect.objectContaining({
+				recurrenceType: "NONE",
+				dueDate: null,
+			}),
+		});
+	});
 });
