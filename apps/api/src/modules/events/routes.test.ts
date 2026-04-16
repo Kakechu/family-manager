@@ -24,11 +24,7 @@ vi.mock("../../middleware/auth", () => {
 		},
 		requireRole:
 			(allowedRoles: Array<"PARENT" | "CHILD">) =>
-			(
-				req: AuthenticatedRequest,
-				res: Response,
-				next: NextFunction,
-			): void => {
+			(req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
 				if (!req.auth || !allowedRoles.includes(req.auth.role)) {
 					res.status(403).json({
 						error: {
