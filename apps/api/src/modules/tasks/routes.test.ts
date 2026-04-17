@@ -229,6 +229,25 @@ describe("tasks routes", () => {
 		);
 	});
 
+	it("returns sanitized 500 response when task creation fails", async () => {
+		(
+			prismaMock.task.create as unknown as ReturnType<typeof vi.fn>
+		).mockRejectedValue(new Error("db exploded"));
+
+		const app = buildApp();
+
+		const response = await request(app).post("/api/v1/tasks").send({
+			title: "Take out trash",
+			recurrenceType: "NONE",
+			categoryId: 1,
+		});
+
+		expect(response.status).toBe(500);
+		expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+		expect(response.body.error.message).toBe("Internal server error");
+		expect(response.body.error.details).toBeUndefined();
+	});
+
 	it("deletes a task when it belongs to the family", async () => {
 		(
 			prismaMock.task.findFirst as unknown as ReturnType<typeof vi.fn>
@@ -334,6 +353,37 @@ describe("tasks routes", () => {
 				dueDate: null,
 			}),
 		});
+	});
+
+	it("returns sanitized 500 response when task update fails", async () => {
+		(
+			prismaMock.task.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 4,
+			title: "Monthly report",
+			description: null,
+			dueDate: new Date("2026-04-30T18:00:00.000Z"),
+			isCompleted: false,
+			recurrenceType: "MONTHLY",
+			categoryId: 1,
+			createdBy: 1,
+			familyId: 10,
+		});
+
+		(
+			prismaMock.task.update as unknown as ReturnType<typeof vi.fn>
+		).mockRejectedValue(new Error("db exploded"));
+
+		const app = buildApp();
+
+		const response = await request(app)
+			.patch("/api/v1/tasks/4")
+			.send({ title: "Monthly report updated" });
+
+		expect(response.status).toBe(500);
+		expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+		expect(response.body.error.message).toBe("Internal server error");
+		expect(response.body.error.details).toBeUndefined();
 	});
 
 	it("returns 403 when a child user attempts to create a task", async () => {
