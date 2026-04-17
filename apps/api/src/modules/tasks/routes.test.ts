@@ -47,6 +47,9 @@ const prismaMock = vi.hoisted(() => ({
 		update: vi.fn(),
 		delete: vi.fn(),
 	},
+	taskCategory: {
+		findFirst: vi.fn(),
+	},
 }));
 
 vi.mock("../../shared/db/client", () => {
@@ -124,6 +127,10 @@ describe("tasks routes", () => {
 
 	it("creates a non-recurring task with no due date", async () => {
 		(
+			prismaMock.taskCategory.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({ id: 1, familyId: 10, name: "Home", color: null });
+
+		(
 			prismaMock.task.create as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue({
 			id: 1,
@@ -152,6 +159,28 @@ describe("tasks routes", () => {
 		expect(body.data.dueDate).toBeNull();
 		// isCompleted should default to false on creation
 		expect(body.data.isCompleted).toBe(false);
+		expect(prismaMock.taskCategory.findFirst).toHaveBeenCalledWith({
+			where: { id: 1, familyId: 10 },
+		});
+	});
+
+	it("rejects create when task category is outside authenticated family", async () => {
+		(
+			prismaMock.taskCategory.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue(null);
+
+		const app = buildApp();
+
+		const response = await request(app).post("/api/v1/tasks").send({
+			title: "Take out trash",
+			recurrenceType: "NONE",
+			categoryId: 999,
+		});
+
+		expect(response.status).toBe(404);
+		expect(response.body.error.code).toBe("TASK_CATEGORY_NOT_FOUND");
+		expect(response.body.error.message).toBe("Task category not found");
+		expect(prismaMock.task.create).not.toHaveBeenCalled();
 	});
 
 	it("rejects recurring task without due date", async () => {
@@ -186,6 +215,10 @@ describe("tasks routes", () => {
 	});
 
 	it("creates a recurring task when a due date is provided", async () => {
+		(
+			prismaMock.taskCategory.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({ id: 1, familyId: 10, name: "Home", color: null });
+
 		(
 			prismaMock.task.create as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue({
@@ -230,6 +263,10 @@ describe("tasks routes", () => {
 	});
 
 	it("returns sanitized 500 response when task creation fails", async () => {
+		(
+			prismaMock.taskCategory.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({ id: 1, familyId: 10, name: "Home", color: null });
+
 		(
 			prismaMock.task.create as unknown as ReturnType<typeof vi.fn>
 		).mockRejectedValue(new Error("db exploded"));
@@ -409,6 +446,84 @@ describe("tasks routes", () => {
 			where: { id: 8 },
 			data: expect.objectContaining({ title: "Weekly planning updated" }),
 		});
+		expect(prismaMock.taskCategory.findFirst).not.toHaveBeenCalled();
+	});
+
+	it("updates task category when provided and owned by authenticated family", async () => {
+		(
+			prismaMock.task.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 11,
+			title: "Laundry",
+			description: null,
+			dueDate: null,
+			isCompleted: false,
+			recurrenceType: "NONE",
+			categoryId: 1,
+			createdBy: 1,
+			familyId: 10,
+		});
+		(
+			prismaMock.taskCategory.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({ id: 2, familyId: 10, name: "School", color: null });
+		(
+			prismaMock.task.update as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 11,
+			title: "Laundry",
+			description: null,
+			dueDate: null,
+			isCompleted: false,
+			recurrenceType: "NONE",
+			categoryId: 2,
+			createdBy: 1,
+			familyId: 10,
+		});
+
+		const app = buildApp();
+
+		const response = await request(app)
+			.patch("/api/v1/tasks/11")
+			.send({ categoryId: 2 });
+
+		expect(response.status).toBe(200);
+		expect(prismaMock.taskCategory.findFirst).toHaveBeenCalledWith({
+			where: { id: 2, familyId: 10 },
+		});
+		expect(prismaMock.task.update).toHaveBeenCalledWith({
+			where: { id: 11 },
+			data: expect.objectContaining({ categoryId: 2 }),
+		});
+	});
+
+	it("rejects task patch when provided category is outside authenticated family", async () => {
+		(
+			prismaMock.task.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 12,
+			title: "Laundry",
+			description: null,
+			dueDate: null,
+			isCompleted: false,
+			recurrenceType: "NONE",
+			categoryId: 1,
+			createdBy: 1,
+			familyId: 10,
+		});
+		(
+			prismaMock.taskCategory.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue(null);
+
+		const app = buildApp();
+
+		const response = await request(app)
+			.patch("/api/v1/tasks/12")
+			.send({ categoryId: 999 });
+
+		expect(response.status).toBe(404);
+		expect(response.body.error.code).toBe("TASK_CATEGORY_NOT_FOUND");
+		expect(response.body.error.message).toBe("Task category not found");
+		expect(prismaMock.task.update).not.toHaveBeenCalled();
 	});
 
 	it("allows patching a recurring task back to a non-recurring task while clearing the due date", async () => {

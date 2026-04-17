@@ -164,6 +164,18 @@ router.post(
 			return;
 		}
 
+		const category = await prisma.taskCategory.findFirst({
+			where: {
+				id: categoryId,
+				familyId: req.auth.familyId,
+			},
+		});
+
+		if (!category) {
+			sendError(res, 404, "TASK_CATEGORY_NOT_FOUND", "Task category not found");
+			return;
+		}
+
 		const created = await prisma.task.create({
 			data: {
 				title,
@@ -233,6 +245,25 @@ router.patch(
 			categoryId,
 			isCompleted,
 		} = parsed.data;
+
+		if (categoryId !== undefined) {
+			const category = await prisma.taskCategory.findFirst({
+				where: {
+					id: categoryId,
+					familyId: req.auth.familyId,
+				},
+			});
+
+			if (!category) {
+				sendError(
+					res,
+					404,
+					"TASK_CATEGORY_NOT_FOUND",
+					"Task category not found",
+				);
+				return;
+			}
+		}
 
 		const effectiveRecurrenceType = recurrenceType ?? existing.recurrenceType;
 		const effectiveDueDateIsNull =

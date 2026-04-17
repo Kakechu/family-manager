@@ -168,6 +168,23 @@ router.post(
 
 		const { title, description, startTime, endTime, categoryId } = parsed.data;
 
+		const category = await prisma.eventCategory.findFirst({
+			where: {
+				id: categoryId,
+				familyId: req.auth.familyId,
+			},
+		});
+
+		if (!category) {
+			sendError(
+				res,
+				404,
+				"EVENT_CATEGORY_NOT_FOUND",
+				"Event category not found",
+			);
+			return;
+		}
+
 		const created = await prisma.event.create({
 			data: {
 				title,
@@ -228,6 +245,25 @@ router.patch(
 		}
 
 		const { title, description, startTime, endTime, categoryId } = parsed.data;
+
+		if (categoryId !== undefined) {
+			const category = await prisma.eventCategory.findFirst({
+				where: {
+					id: categoryId,
+					familyId: req.auth.familyId,
+				},
+			});
+
+			if (!category) {
+				sendError(
+					res,
+					404,
+					"EVENT_CATEGORY_NOT_FOUND",
+					"Event category not found",
+				);
+				return;
+			}
+		}
 
 		const updated = await prisma.event.update({
 			where: { id },
