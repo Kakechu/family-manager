@@ -234,8 +234,12 @@ router.patch(
 			isCompleted,
 		} = parsed.data;
 
-		if (recurrenceType && recurrenceType !== "NONE" && dueDate === null) {
-			// Prevent setting a recurring task to have no due date.
+		const effectiveRecurrenceType = recurrenceType ?? existing.recurrenceType;
+		const effectiveDueDateIsNull =
+			dueDate !== undefined ? dueDate === null : existing.dueDate === null;
+
+		if (effectiveRecurrenceType !== "NONE" && effectiveDueDateIsNull) {
+			// Prevent updates that would leave a recurring task with no due date.
 			sendError(
 				res,
 				400,

@@ -306,6 +306,111 @@ describe("tasks routes", () => {
 		expect(prismaMock.task.update).not.toHaveBeenCalled();
 	});
 
+	it("rejects partial dueDate patch that would make an existing recurring task invalid", async () => {
+		(
+			prismaMock.task.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 6,
+			title: "Daily reminder",
+			description: null,
+			dueDate: new Date("2026-05-01T08:00:00.000Z"),
+			isCompleted: false,
+			recurrenceType: "DAILY",
+			categoryId: 1,
+			createdBy: 1,
+			familyId: 10,
+		});
+
+		const app = buildApp();
+
+		const response = await request(app)
+			.patch("/api/v1/tasks/6")
+			.send({ dueDate: null });
+
+		expect(response.status).toBe(400);
+		expect(response.body.error).toBeDefined();
+		expect(response.body.error.code).toBe("VALIDATION_ERROR");
+		expect(response.body.error.message).toBe(
+			"Recurring tasks must have a due date",
+		);
+		expect(prismaMock.task.update).not.toHaveBeenCalled();
+	});
+
+	it("rejects partial recurrence patch when existing due date is null", async () => {
+		(
+			prismaMock.task.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 7,
+			title: "One-off cleanup",
+			description: null,
+			dueDate: null,
+			isCompleted: false,
+			recurrenceType: "NONE",
+			categoryId: 1,
+			createdBy: 1,
+			familyId: 10,
+		});
+
+		const app = buildApp();
+
+		const response = await request(app)
+			.patch("/api/v1/tasks/7")
+			.send({ recurrenceType: "WEEKLY" });
+
+		expect(response.status).toBe(400);
+		expect(response.body.error).toBeDefined();
+		expect(response.body.error.code).toBe("VALIDATION_ERROR");
+		expect(response.body.error.message).toBe(
+			"Recurring tasks must have a due date",
+		);
+		expect(prismaMock.task.update).not.toHaveBeenCalled();
+	});
+
+	it("allows unrelated partial patch when existing recurring task state remains valid", async () => {
+		(
+			prismaMock.task.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 8,
+			title: "Weekly planning",
+			description: null,
+			dueDate: new Date("2026-05-02T09:30:00.000Z"),
+			isCompleted: false,
+			recurrenceType: "WEEKLY",
+			categoryId: 1,
+			createdBy: 1,
+			familyId: 10,
+		});
+
+		(
+			prismaMock.task.update as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 8,
+			title: "Weekly planning updated",
+			description: null,
+			dueDate: new Date("2026-05-02T09:30:00.000Z"),
+			isCompleted: false,
+			recurrenceType: "WEEKLY",
+			categoryId: 1,
+			createdBy: 1,
+			familyId: 10,
+		});
+
+		const app = buildApp();
+
+		const response = await request(app)
+			.patch("/api/v1/tasks/8")
+			.send({ title: "Weekly planning updated" });
+
+		expect(response.status).toBe(200);
+		expect(response.body.data.title).toBe("Weekly planning updated");
+		expect(response.body.data.recurrenceType).toBe("WEEKLY");
+		expect(response.body.data.dueDate).toBe("2026-05-02T09:30:00.000Z");
+		expect(prismaMock.task.update).toHaveBeenCalledWith({
+			where: { id: 8 },
+			data: expect.objectContaining({ title: "Weekly planning updated" }),
+		});
+	});
+
 	it("allows patching a recurring task back to a non-recurring task while clearing the due date", async () => {
 		(
 			prismaMock.task.findFirst as unknown as ReturnType<typeof vi.fn>
