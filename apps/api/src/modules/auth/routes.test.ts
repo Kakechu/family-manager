@@ -187,5 +187,4 @@ describe("auth routes", () => {
 		// Verify internal details are NOT exposed
 		expect(response.body.error.message).not.toContain("Network");
 	});
-
 });
