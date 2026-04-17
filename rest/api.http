@@ -57,3 +57,6 @@ GET {{baseUrl}}/family-members
 
 ### Run reminder scheduler for current family (requires parent auth)
 POST {{baseUrl}}/notifications/reminders/run
+
+### List current user's notifications
+GET {{baseUrl}}/notifications

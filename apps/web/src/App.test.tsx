@@ -7,6 +7,7 @@ import {
 	listNotifications,
 	markAllNotificationsRead,
 	markNotificationRead,
+	runReminderScheduler,
 } from "./services/notifications";
 
 vi.mock("./services/auth", () => ({
@@ -18,6 +19,7 @@ vi.mock("./services/notifications", () => ({
 	listNotifications: vi.fn(),
 	markNotificationRead: vi.fn(),
 	markAllNotificationsRead: vi.fn(),
+	runReminderScheduler: vi.fn(),
 	isMissingEndpointError: (error: unknown) =>
 		(error as { response?: { status?: number } })?.response?.status === 404,
 }));
@@ -80,6 +82,12 @@ describe("App", () => {
 			},
 		});
 		vi.mocked(markAllNotificationsRead).mockResolvedValue(undefined);
+		vi.mocked(runReminderScheduler).mockResolvedValue({
+			data: {
+				createdTaskNotifications: 1,
+				createdEventNotifications: 1,
+			},
+		});
 	});
 
 	it("shows notifications entry and unread count loaded from backend state", async () => {
@@ -160,5 +168,39 @@ describe("App", () => {
 				/Mark-all endpoint is unavailable, so notifications were marked read one by one/i,
 			),
 		).toBeInTheDocument();
+	});
+
+	it("runs the reminder scheduler before refreshing notifications for parents", async () => {
+		render(
+			<React.StrictMode>
+				<App />
+			</React.StrictMode>,
+		);
+
+		const notificationsButton = await screen.findByRole("button", {
+			name: /Notifications/i,
+		});
+		fireEvent.click(notificationsButton);
+
+		await waitFor(() => {
+			expect(runReminderScheduler).toHaveBeenCalled();
+		});
+
+		const schedulerCallsBeforeRefresh = vi.mocked(runReminderScheduler).mock.calls.length;
+		const notificationCallsBeforeRefresh = vi.mocked(listNotifications).mock.calls.length;
+
+		fireEvent.click(screen.getByRole("button", { name: /Refresh/i }));
+
+		await waitFor(() => {
+			expect(vi.mocked(runReminderScheduler).mock.calls.length).toBe(
+				schedulerCallsBeforeRefresh + 1,
+			);
+		});
+
+		await waitFor(() => {
+			expect(vi.mocked(listNotifications).mock.calls.length).toBe(
+				notificationCallsBeforeRefresh + 1,
+			);
+		});
 	});
 });
