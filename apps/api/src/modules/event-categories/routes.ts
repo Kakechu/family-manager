@@ -38,8 +38,16 @@ router.use(authenticate);
 
 router.get(
 	"/",
-	asyncHandler(async (_req: AuthenticatedRequest, res) => {
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
+		}
+
 		const categories = await prisma.eventCategory.findMany({
+			where: {
+				familyId: req.auth.familyId,
+			},
 			orderBy: { id: "asc" },
 		});
 
@@ -52,8 +60,13 @@ router.get(
 router.post(
 	"/",
 	requireRole([UserRole.PARENT]),
-	asyncHandler(async (_req: AuthenticatedRequest, res) => {
-		const parsed = createEventCategorySchema.safeParse(_req.body);
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
+		}
+
+		const parsed = createEventCategorySchema.safeParse(req.body);
 
 		if (!parsed.success) {
 			sendError(
@@ -72,6 +85,7 @@ router.post(
 			data: {
 				name,
 				color: color ?? null,
+				familyId: req.auth.familyId,
 			},
 		});
 
@@ -113,8 +127,16 @@ router.patch(
 
 		const { id } = paramsResult.data;
 
-		const existing = await prisma.eventCategory.findUnique({
-			where: { id },
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
+		}
+
+		const existing = await prisma.eventCategory.findFirst({
+			where: {
+				id,
+				familyId: req.auth.familyId,
+			},
 		});
 
 		if (!existing) {
@@ -162,8 +184,16 @@ router.delete(
 
 		const { id } = paramsResult.data;
 
-		const existing = await prisma.eventCategory.findUnique({
-			where: { id },
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
+		}
+
+		const existing = await prisma.eventCategory.findFirst({
+			where: {
+				id,
+				familyId: req.auth.familyId,
+			},
 		});
 
 		if (!existing) {

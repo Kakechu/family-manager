@@ -102,23 +102,30 @@ async function main() {
 		skipDuplicates: true,
 	});
 
-	// Shared event categories
+	// Family-scoped event categories
 	const eventCategories = await prisma.eventCategory.createMany({
 		data: [
-			{ name: "School", color: "#1976d2" },
-			{ name: "Hobby", color: "#9c27b0" },
-			{ name: "Doctor", color: "#d32f2f" },
-			{ name: "Family", color: "#388e3c" },
+			{ name: "School", color: "#1976d2", familyId: familyOne.id },
+			{ name: "Hobby", color: "#9c27b0", familyId: familyOne.id },
+			{ name: "Doctor", color: "#d32f2f", familyId: familyOne.id },
+			{ name: "Family", color: "#388e3c", familyId: familyOne.id },
+			{ name: "School", color: "#1976d2", familyId: familyTwo.id },
+			{ name: "Hobby", color: "#9c27b0", familyId: familyTwo.id },
+			{ name: "Doctor", color: "#d32f2f", familyId: familyTwo.id },
+			{ name: "Family", color: "#388e3c", familyId: familyTwo.id },
 		],
 		skipDuplicates: true,
 	});
 
-	// Shared task categories
+	// Family-scoped task categories
 	await prisma.taskCategory.createMany({
 		data: [
-			{ name: "Chore", color: "#ffa000" },
-			{ name: "Homework", color: "#7b1fa2" },
-			{ name: "Errand", color: "#0288d1" },
+			{ name: "Chore", color: "#ffa000", familyId: familyOne.id },
+			{ name: "Homework", color: "#7b1fa2", familyId: familyOne.id },
+			{ name: "Errand", color: "#0288d1", familyId: familyOne.id },
+			{ name: "Chore", color: "#ffa000", familyId: familyTwo.id },
+			{ name: "Homework", color: "#7b1fa2", familyId: familyTwo.id },
+			{ name: "Errand", color: "#0288d1", familyId: familyTwo.id },
 		],
 		skipDuplicates: true,
 	});
@@ -126,6 +133,7 @@ async function main() {
 	// Create a couple of example events for the first family so
 	// the calendar has something to show when using seed data.
 	const firstCategory = await prisma.eventCategory.findFirst({
+		where: { familyId: familyOne.id },
 		orderBy: { id: "asc" },
 	});
 

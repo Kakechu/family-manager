@@ -38,8 +38,16 @@ router.use(authenticate);
 
 router.get(
 	"/",
-	asyncHandler(async (_req: AuthenticatedRequest, res) => {
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
+		}
+
 		const categories = await prisma.taskCategory.findMany({
+			where: {
+				familyId: req.auth.familyId,
+			},
 			orderBy: { id: "asc" },
 		});
 
@@ -53,6 +61,11 @@ router.post(
 	"/",
 	requireRole([UserRole.PARENT]),
 	asyncHandler(async (req: AuthenticatedRequest, res) => {
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
+		}
+
 		const parsed = createTaskCategorySchema.safeParse(req.body);
 
 		if (!parsed.success) {
@@ -72,6 +85,7 @@ router.post(
 			data: {
 				name,
 				color: color ?? null,
+				familyId: req.auth.familyId,
 			},
 		});
 
@@ -111,10 +125,18 @@ router.patch(
 			return;
 		}
 
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
+		}
+
 		const { id } = paramsResult.data;
 
-		const existing = await prisma.taskCategory.findUnique({
-			where: { id },
+		const existing = await prisma.taskCategory.findFirst({
+			where: {
+				id,
+				familyId: req.auth.familyId,
+			},
 		});
 
 		if (!existing) {
@@ -155,10 +177,18 @@ router.delete(
 			return;
 		}
 
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
+		}
+
 		const { id } = paramsResult.data;
 
-		const existing = await prisma.taskCategory.findUnique({
-			where: { id },
+		const existing = await prisma.taskCategory.findFirst({
+			where: {
+				id,
+				familyId: req.auth.familyId,
+			},
 		});
 
 		if (!existing) {
