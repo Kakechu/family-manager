@@ -47,6 +47,9 @@ const prismaMock = vi.hoisted(() => ({
 		update: vi.fn(),
 		delete: vi.fn(),
 	},
+	eventCategory: {
+		findFirst: vi.fn(),
+	},
 }));
 
 vi.mock("../../shared/db/client", () => {
@@ -98,6 +101,10 @@ describe("events routes", () => {
 
 	it("creates an event", async () => {
 		(
+			prismaMock.eventCategory.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({ id: 1, familyId: 10, name: "School", color: null });
+
+		(
 			prismaMock.event.create as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue({
 			id: 2,
@@ -123,9 +130,36 @@ describe("events routes", () => {
 		const body = response.body as { data: Event };
 		expect(body.data.id).toBe(2);
 		expect(body.data.familyId).toBe(10);
+		expect(prismaMock.eventCategory.findFirst).toHaveBeenCalledWith({
+			where: { id: 1, familyId: 10 },
+		});
+	});
+
+	it("rejects create when event category is outside authenticated family", async () => {
+		(
+			prismaMock.eventCategory.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue(null);
+
+		const app = buildApp();
+
+		const response = await request(app).post("/api/v1/events").send({
+			title: "School meeting",
+			startTime: "2026-04-16T08:00:00.000Z",
+			endTime: "2026-04-16T09:00:00.000Z",
+			categoryId: 999,
+		});
+
+		expect(response.status).toBe(404);
+		expect(response.body.error.code).toBe("EVENT_CATEGORY_NOT_FOUND");
+		expect(response.body.error.message).toBe("Event category not found");
+		expect(prismaMock.event.create).not.toHaveBeenCalled();
 	});
 
 	it("returns sanitized 500 response when event creation fails", async () => {
+		(
+			prismaMock.eventCategory.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({ id: 1, familyId: 10, name: "School", color: null });
+
 		(
 			prismaMock.event.create as unknown as ReturnType<typeof vi.fn>
 		).mockRejectedValue(new Error("db exploded"));
@@ -231,5 +265,115 @@ describe("events routes", () => {
 		expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
 		expect(response.body.error.message).toBe("Internal server error");
 		expect(response.body.error.details).toBeUndefined();
+	});
+
+	it("updates event category when provided and owned by authenticated family", async () => {
+		(
+			prismaMock.event.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 3,
+			title: "School meeting",
+			description: null,
+			startTime: new Date("2026-04-16T08:00:00Z"),
+			endTime: new Date("2026-04-16T09:00:00Z"),
+			categoryId: 1,
+			createdBy: 1,
+			familyId: 10,
+		});
+		(
+			prismaMock.eventCategory.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({ id: 2, familyId: 10, name: "Doctor", color: null });
+		(
+			prismaMock.event.update as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 3,
+			title: "School meeting",
+			description: null,
+			startTime: new Date("2026-04-16T08:00:00Z"),
+			endTime: new Date("2026-04-16T09:00:00Z"),
+			categoryId: 2,
+			createdBy: 1,
+			familyId: 10,
+		});
+
+		const app = buildApp();
+
+		const response = await request(app)
+			.patch("/api/v1/events/3")
+			.send({ categoryId: 2 });
+
+		expect(response.status).toBe(200);
+		expect(prismaMock.eventCategory.findFirst).toHaveBeenCalledWith({
+			where: { id: 2, familyId: 10 },
+		});
+		expect(prismaMock.event.update).toHaveBeenCalledWith({
+			where: { id: 3 },
+			data: expect.objectContaining({ categoryId: 2 }),
+		});
+	});
+
+	it("rejects event patch when provided category is outside authenticated family", async () => {
+		(
+			prismaMock.event.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 4,
+			title: "School meeting",
+			description: null,
+			startTime: new Date("2026-04-16T08:00:00Z"),
+			endTime: new Date("2026-04-16T09:00:00Z"),
+			categoryId: 1,
+			createdBy: 1,
+			familyId: 10,
+		});
+		(
+			prismaMock.eventCategory.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue(null);
+
+		const app = buildApp();
+
+		const response = await request(app)
+			.patch("/api/v1/events/4")
+			.send({ categoryId: 999 });
+
+		expect(response.status).toBe(404);
+		expect(response.body.error.code).toBe("EVENT_CATEGORY_NOT_FOUND");
+		expect(response.body.error.message).toBe("Event category not found");
+		expect(prismaMock.event.update).not.toHaveBeenCalled();
+	});
+
+	it("does not validate category ownership when event patch omits categoryId", async () => {
+		(
+			prismaMock.event.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 5,
+			title: "School meeting",
+			description: null,
+			startTime: new Date("2026-04-16T08:00:00Z"),
+			endTime: new Date("2026-04-16T09:00:00Z"),
+			categoryId: 1,
+			createdBy: 1,
+			familyId: 10,
+		});
+		(
+			prismaMock.event.update as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 5,
+			title: "Updated meeting",
+			description: null,
+			startTime: new Date("2026-04-16T08:00:00Z"),
+			endTime: new Date("2026-04-16T09:00:00Z"),
+			categoryId: 1,
+			createdBy: 1,
+			familyId: 10,
+		});
+
+		const app = buildApp();
+
+		const response = await request(app)
+			.patch("/api/v1/events/5")
+			.send({ title: "Updated meeting" });
+
+		expect(response.status).toBe(200);
+		expect(prismaMock.eventCategory.findFirst).not.toHaveBeenCalled();
 	});
 });
