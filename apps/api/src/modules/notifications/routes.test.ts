@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Notification } from "@family-manager/shared";
 import type { AuthenticatedRequest } from "../../middleware/auth";
+import { apiErrorHandler } from "../../shared/http/error-handler";
 import { runFamilyReminderScheduler } from "./reminder-scheduler";
 import notificationsRouter from "./routes";
 
@@ -66,6 +67,7 @@ const buildApp = () => {
 	app.use(express.json());
 	app.use(cookieParser());
 	app.use("/api/v1/notifications", notificationsRouter);
+	app.use(apiErrorHandler);
 	return app;
 };
 
@@ -122,6 +124,7 @@ describe("notifications routes - reminder scheduler", () => {
 describe("notifications routes - inbox and read state", () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
+		authState.role = "PARENT";
 	});
 
 	it("lists notifications for the authenticated user in descending order", async () => {
@@ -233,5 +236,83 @@ describe("notifications routes - inbox and read state", () => {
 				data: { isRead: true },
 			}),
 		);
+	});
+
+	// Regression tests: async error containment
+	// Verify that forced async failures return standardized error envelope
+
+	it("returns standardized error envelope on GET notifications async failure", async () => {
+		// Force an async error
+		(
+			prismaMock.notification.findMany as unknown as ReturnType<typeof vi.fn>
+		).mockRejectedValue(new Error("Database connection lost"));
+
+		const app = buildApp();
+
+		const response = await request(app).get("/api/v1/notifications");
+
+		expect(response.status).toBe(500);
+		expect(response.body.error).toBeDefined();
+		expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+		expect(response.body.error.message).toBe("Internal server error");
+		// Verify internal error details are NOT exposed
+		expect(response.body.error.message).not.toContain("Database");
+	});
+
+	it("returns standardized error envelope on PATCH notification async failure", async () => {
+		(
+			prismaMock.notification.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({ id: 3, userId: 1 });
+
+		// Force an async error in update
+		(
+			prismaMock.notification.update as unknown as ReturnType<typeof vi.fn>
+		).mockRejectedValue(new Error("Network timeout"));
+
+		const app = buildApp();
+
+		const response = await request(app).patch("/api/v1/notifications/3/read");
+
+		expect(response.status).toBe(500);
+		expect(response.body.error).toBeDefined();
+		expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+		// Verify internal error message is sanitized
+		expect(response.body.error.message).toBe("Internal server error");
+	});
+
+	it("returns standardized error envelope on POST mark-all-read async failure", async () => {
+		// Force an async error
+		(
+			prismaMock.notification.updateMany as unknown as ReturnType<typeof vi.fn>
+		).mockRejectedValue(new Error("Database error"));
+
+		const app = buildApp();
+
+		const response = await request(app).post(
+			"/api/v1/notifications/mark-all-read",
+		);
+
+		expect(response.status).toBe(500);
+		expect(response.body.error).toBeDefined();
+		expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+		expect(response.body.error.message).toBe("Internal server error");
+	});
+
+	it("returns standardized error envelope on POST reminders/run async failure", async () => {
+		// Force an async error in family reminder scheduler
+		(
+			runFamilyReminderScheduler as unknown as ReturnType<typeof vi.fn>
+		).mockRejectedValue(new Error("Scheduler error"));
+
+		const app = buildApp();
+
+		const response = await request(app).post(
+			"/api/v1/notifications/reminders/run",
+		);
+
+		expect(response.status).toBe(500);
+		expect(response.body.error).toBeDefined();
+		expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+		expect(response.body.error.message).toBe("Internal server error");
 	});
 });

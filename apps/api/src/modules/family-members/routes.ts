@@ -14,6 +14,7 @@ import {
 	requireRole,
 } from "../../middleware/auth";
 import { prisma } from "../../shared/db/client";
+import { asyncHandler } from "../../shared/http/error-handler";
 import { sendData, sendError, sendList } from "../../shared/http/responses";
 
 const router = Router();
@@ -75,44 +76,47 @@ const toFamilyMemberDto = (member: {
 
 router.use(authenticate);
 
-router.get("/", async (req: AuthenticatedRequest, res) => {
-	if (!req.auth) {
-		sendError(res, 401, "UNAUTHORIZED", "Authentication required");
-		return;
-	}
+router.get(
+	"/",
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
+		}
 
-	const parsedQuery = querySchema.safeParse(req.query);
+		const parsedQuery = querySchema.safeParse(req.query);
 
-	if (!parsedQuery.success) {
-		sendError(
-			res,
-			400,
-			"VALIDATION_ERROR",
-			"Invalid query parameters",
-			parsedQuery.error.flatten(),
-		);
-		return;
-	}
+		if (!parsedQuery.success) {
+			sendError(
+				res,
+				400,
+				"VALIDATION_ERROR",
+				"Invalid query parameters",
+				parsedQuery.error.flatten(),
+			);
+			return;
+		}
 
-	const { role } = parsedQuery.data;
+		const { role } = parsedQuery.data;
 
-	const members = await prisma.familyMember.findMany({
-		where: {
-			familyId: req.auth.familyId,
-			...(role ? { role } : {}),
-		},
-		orderBy: { id: "asc" },
-	});
+		const members = await prisma.familyMember.findMany({
+			where: {
+				familyId: req.auth.familyId,
+				...(role ? { role } : {}),
+			},
+			orderBy: { id: "asc" },
+		});
 
-	const dtos = members.map(toFamilyMemberDto);
+		const dtos = members.map(toFamilyMemberDto);
 
-	sendList(res, 200, dtos);
-});
+		sendList(res, 200, dtos);
+	}),
+);
 
 router.post(
 	"/",
 	requireRole([UserRole.PARENT]),
-	async (req: AuthenticatedRequest, res) => {
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
 		if (!req.auth) {
 			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
 			return;
@@ -159,13 +163,13 @@ router.post(
 		const dto = toFamilyMemberDto(created);
 
 		sendData(res, 201, dto);
-	},
+	}),
 );
 
 router.patch(
 	"/:id",
 	requireRole([UserRole.PARENT]),
-	async (req: AuthenticatedRequest, res) => {
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
 		if (!req.auth) {
 			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
 			return;
@@ -234,13 +238,13 @@ router.patch(
 		const dto = toFamilyMemberDto(updated);
 
 		sendData(res, 200, dto);
-	},
+	}),
 );
 
 router.delete(
 	"/:id",
 	requireRole([UserRole.PARENT]),
-	async (req: AuthenticatedRequest, res) => {
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
 		if (!req.auth) {
 			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
 			return;
@@ -268,7 +272,7 @@ router.delete(
 		await prisma.familyMember.delete({ where: { id } });
 
 		res.status(204).send();
-	},
+	}),
 );
 
 export default router;

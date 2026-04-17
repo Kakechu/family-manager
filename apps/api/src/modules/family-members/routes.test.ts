@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { FamilyMember } from "@family-manager/shared";
 import type { AuthenticatedRequest } from "../../middleware/auth";
+import { apiErrorHandler } from "../../shared/http/error-handler";
 import familyMembersRouter from "./routes";
 
 const authState = vi.hoisted(() => ({
@@ -64,6 +65,7 @@ const buildApp = () => {
 	app.use(express.json());
 	app.use(cookieParser());
 	app.use("/api/v1/family-members", familyMembersRouter);
+	app.use(apiErrorHandler);
 	return app;
 };
 
@@ -163,5 +165,47 @@ describe("family members routes", () => {
 			"Linked user must belong to the current family",
 		);
 		expect(prismaMock.familyMember.create).not.toHaveBeenCalled();
+	});
+
+	// Regression tests: async error containment
+	// Verify that forced async failures return standardized error envelope
+
+	it("returns standardized error envelope on GET family-members async failure", async () => {
+		// Force an async error
+		(
+			prismaMock.familyMember.findMany as unknown as ReturnType<typeof vi.fn>
+		).mockRejectedValue(new Error("Database connection lost"));
+
+		const app = buildApp();
+
+		const response = await request(app).get("/api/v1/family-members");
+
+		expect(response.status).toBe(500);
+		expect(response.body.error).toBeDefined();
+		expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+		expect(response.body.error.message).toBe("Internal server error");
+		// Verify internal error details are NOT exposed
+		expect(response.body.error.message).not.toContain("Database");
+	});
+
+	it("returns standardized error envelope on POST family-member async failure", async () => {
+		// Force an async error in create
+		(
+			prismaMock.familyMember.create as unknown as ReturnType<typeof vi.fn>
+		).mockRejectedValue(new Error("Network timeout"));
+
+		const app = buildApp();
+
+		const response = await request(app).post("/api/v1/family-members").send({
+			firstName: "Child",
+			lastName: "One",
+			role: "CHILD",
+		});
+
+		expect(response.status).toBe(500);
+		expect(response.body.error).toBeDefined();
+		expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+		// Verify internal error message is sanitized
+		expect(response.body.error.message).toBe("Internal server error");
 	});
 });

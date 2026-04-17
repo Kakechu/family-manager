@@ -12,6 +12,7 @@ import {
 	requireRole,
 } from "../../middleware/auth";
 import { prisma } from "../../shared/db/client";
+import { asyncHandler } from "../../shared/http/error-handler";
 import { sendData, sendError, sendList } from "../../shared/http/responses";
 
 const router = Router();
@@ -37,53 +38,56 @@ const toTaskAssignmentDto = (assignment: {
 
 router.use(authenticate);
 
-router.get("/", async (req: AuthenticatedRequest, res) => {
-	if (!req.auth) {
-		sendError(res, 401, "UNAUTHORIZED", "Authentication required");
-		return;
-	}
+router.get(
+	"/",
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
+		}
 
-	const parsedQuery = querySchema.safeParse(req.query);
+		const parsedQuery = querySchema.safeParse(req.query);
 
-	if (!parsedQuery.success) {
-		sendError(
-			res,
-			400,
-			"VALIDATION_ERROR",
-			"Invalid query parameters",
-			parsedQuery.error.flatten(),
-		);
-		return;
-	}
+		if (!parsedQuery.success) {
+			sendError(
+				res,
+				400,
+				"VALIDATION_ERROR",
+				"Invalid query parameters",
+				parsedQuery.error.flatten(),
+			);
+			return;
+		}
 
-	const { taskId } = parsedQuery.data;
+		const { taskId } = parsedQuery.data;
 
-	const task = await prisma.task.findFirst({
-		where: {
-			id: taskId,
-			familyId: req.auth.familyId,
-		},
-	});
+		const task = await prisma.task.findFirst({
+			where: {
+				id: taskId,
+				familyId: req.auth.familyId,
+			},
+		});
 
-	if (!task) {
-		sendError(res, 404, "TASK_NOT_FOUND", "Task not found");
-		return;
-	}
+		if (!task) {
+			sendError(res, 404, "TASK_NOT_FOUND", "Task not found");
+			return;
+		}
 
-	const assignments = await prisma.taskAssignment.findMany({
-		where: { taskId },
-		orderBy: { familyMemberId: "asc" },
-	});
+		const assignments = await prisma.taskAssignment.findMany({
+			where: { taskId },
+			orderBy: { familyMemberId: "asc" },
+		});
 
-	const dtos = assignments.map(toTaskAssignmentDto);
+		const dtos = assignments.map(toTaskAssignmentDto);
 
-	sendList(res, 200, dtos);
-});
+		sendList(res, 200, dtos);
+	}),
+);
 
 router.post(
 	"/",
 	requireRole([UserRole.PARENT]),
-	async (req: AuthenticatedRequest, res) => {
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
 		if (!req.auth) {
 			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
 			return;
@@ -156,13 +160,13 @@ router.post(
 		const dtos = created.map(toTaskAssignmentDto);
 
 		sendList(res, 201, dtos);
-	},
+	}),
 );
 
 router.delete(
 	"/:taskId/:familyMemberId",
 	requireRole([UserRole.PARENT]),
-	async (req: AuthenticatedRequest, res) => {
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
 		if (!req.auth) {
 			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
 			return;
@@ -224,7 +228,7 @@ router.delete(
 		});
 
 		res.status(204).send();
-	},
+	}),
 );
 
 export default router;
