@@ -115,6 +115,7 @@
 
 - Responsibilities
   - Managing EventCategory values at the family scope.
+  - Enforcing that reads and mutations only operate on categories owned by the authenticated user's family.
 - API Prefix
   - /api/v1/event-categories
 
@@ -154,6 +155,7 @@
 
 - Responsibilities
   - Managing TaskCategory values at the family scope.
+  - Enforcing that reads and mutations only operate on categories owned by the authenticated user's family.
 - API Prefix
   - /api/v1/task-categories
 
