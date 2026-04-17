@@ -28,6 +28,7 @@ describe("createTaskDeadlineNotification", () => {
 			prisma,
 			userId: 10,
 			taskId: 20,
+			reminderKey: "task:20:user:10:slot:2026-04-14T10:00:00.000Z",
 			message: "Reminder: task is due soon",
 		});
 
@@ -37,6 +38,7 @@ describe("createTaskDeadlineNotification", () => {
 				type: "TASK_REMINDER",
 				userId: 10,
 				taskId: 20,
+				reminderKey: "task:20:user:10:slot:2026-04-14T10:00:00.000Z",
 			},
 		});
 
@@ -47,6 +49,26 @@ describe("createTaskDeadlineNotification", () => {
 			userId: 10,
 			taskId: 20,
 		});
+	});
+
+	it("returns null when reminder insert hits unique key conflict", async () => {
+		const createMock = vi.fn().mockRejectedValue({ code: "P2002" });
+
+		const prisma = {
+			notification: {
+				create: createMock,
+			},
+		} as unknown as Pick<PrismaClient, "notification">;
+
+		const result = await createTaskDeadlineNotification({
+			prisma,
+			userId: 10,
+			taskId: 20,
+			reminderKey: "task:20:user:10:slot:2026-04-14T10:00:00.000Z",
+			message: "Reminder: task is due soon",
+		});
+
+		expect(result).toBeNull();
 	});
 });
 
@@ -73,6 +95,7 @@ describe("createEventReminderNotification", () => {
 			prisma,
 			userId: 11,
 			eventId: 30,
+			reminderKey: "event:30:user:11:slot:2026-04-14T10:00:00.000Z",
 			message: "Reminder: event starts soon",
 		});
 
@@ -82,6 +105,7 @@ describe("createEventReminderNotification", () => {
 				type: "EVENT_REMINDER",
 				userId: 11,
 				eventId: 30,
+				reminderKey: "event:30:user:11:slot:2026-04-14T10:00:00.000Z",
 			},
 		});
 
@@ -92,5 +116,25 @@ describe("createEventReminderNotification", () => {
 			userId: 11,
 			eventId: 30,
 		});
+	});
+
+	it("returns null when event reminder insert hits unique key conflict", async () => {
+		const createMock = vi.fn().mockRejectedValue({ code: "P2002" });
+
+		const prisma = {
+			notification: {
+				create: createMock,
+			},
+		} as unknown as Pick<PrismaClient, "notification">;
+
+		const result = await createEventReminderNotification({
+			prisma,
+			userId: 11,
+			eventId: 30,
+			reminderKey: "event:30:user:11:slot:2026-04-14T10:00:00.000Z",
+			message: "Reminder: event starts soon",
+		});
+
+		expect(result).toBeNull();
 	});
 });

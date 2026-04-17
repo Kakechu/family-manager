@@ -19,9 +19,7 @@ const prismaMock = {
 	event: {
 		findMany: vi.fn(),
 	},
-	notification: {
-		findFirst: vi.fn(),
-	},
+	notification: {},
 	user: {
 		findMany: vi.fn(),
 	},
@@ -34,9 +32,16 @@ const asAnyPrisma = prismaMock as unknown as Parameters<
 describe("runFamilyReminderScheduler", () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
+
+		(
+			createTaskDeadlineNotification as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({ id: 1 });
+		(
+			createEventReminderNotification as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({ id: 1 });
 	});
 
-	it("creates task reminders for due tasks without existing notifications", async () => {
+	it("creates task reminders for due tasks", async () => {
 		const now = new Date("2026-04-14T12:00:00.000Z");
 
 		(
@@ -63,10 +68,6 @@ describe("runFamilyReminderScheduler", () => {
 			prismaMock.user.findMany as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue([]);
 
-		(
-			prismaMock.notification.findFirst as unknown as ReturnType<typeof vi.fn>
-		).mockResolvedValue(null);
-
 		const result = await runFamilyReminderScheduler({
 			prisma: asAnyPrisma,
 			familyId: 10,
@@ -78,6 +79,7 @@ describe("runFamilyReminderScheduler", () => {
 			expect.objectContaining({
 				userId: 10,
 				taskId: 1,
+				reminderKey: "task:1:user:10:slot:2026-04-14T11:59:00.000Z",
 				message: 'Task "Empty dishwasher" was due 1 minute ago.',
 			}),
 		);
@@ -86,7 +88,7 @@ describe("runFamilyReminderScheduler", () => {
 		expect(result.createdEventNotifications).toBe(0);
 	});
 
-	it("does not create duplicate task reminders when a notification already exists", async () => {
+	it("does not count duplicate task reminders when insert is idempotently skipped", async () => {
 		const now = new Date("2026-04-14T12:00:00.000Z");
 
 		(
@@ -110,10 +112,8 @@ describe("runFamilyReminderScheduler", () => {
 		).mockResolvedValue([]);
 
 		(
-			prismaMock.notification.findFirst as unknown as ReturnType<typeof vi.fn>
-		).mockResolvedValue({
-			id: 999,
-		});
+			createTaskDeadlineNotification as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValueOnce(null);
 
 		const result = await runFamilyReminderScheduler({
 			prisma: asAnyPrisma,
@@ -121,7 +121,7 @@ describe("runFamilyReminderScheduler", () => {
 			now,
 		});
 
-		expect(createTaskDeadlineNotification).not.toHaveBeenCalled();
+		expect(createTaskDeadlineNotification).toHaveBeenCalledTimes(1);
 		expect(result.createdTaskNotifications).toBe(0);
 	});
 
@@ -152,10 +152,6 @@ describe("runFamilyReminderScheduler", () => {
 			prismaMock.user.findMany as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue([]);
 
-		(
-			prismaMock.notification.findFirst as unknown as ReturnType<typeof vi.fn>
-		).mockResolvedValue(null);
-
 		const result = await runFamilyReminderScheduler({
 			prisma: asAnyPrisma,
 			familyId: 10,
@@ -167,6 +163,7 @@ describe("runFamilyReminderScheduler", () => {
 			expect.objectContaining({
 				userId: 30,
 				eventId: 3,
+				reminderKey: "event:3:user:30:slot:2026-04-14T12:00:00.000Z",
 				message: 'Event "Doctor appointment" starts in 60 minutes.',
 			}),
 		);
@@ -263,10 +260,6 @@ describe("runFamilyReminderScheduler", () => {
 			prismaMock.user.findMany as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue([{ id: 100 }, { id: 101 }]);
 
-		(
-			prismaMock.notification.findFirst as unknown as ReturnType<typeof vi.fn>
-		).mockResolvedValue(null);
-
 		const result = await runFamilyReminderScheduler({
 			prisma: asAnyPrisma,
 			familyId: 10,
@@ -309,10 +302,6 @@ describe("runFamilyReminderScheduler", () => {
 		(
 			prismaMock.user.findMany as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue([{ id: 200 }, { id: 201 }]);
-
-		(
-			prismaMock.notification.findFirst as unknown as ReturnType<typeof vi.fn>
-		).mockResolvedValue(null);
 
 		const result = await runFamilyReminderScheduler({
 			prisma: asAnyPrisma,
@@ -357,10 +346,6 @@ describe("runFamilyReminderScheduler", () => {
 			prismaMock.user.findMany as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue([]);
 
-		(
-			prismaMock.notification.findFirst as unknown as ReturnType<typeof vi.fn>
-		).mockResolvedValue(null);
-
 		await runFamilyReminderScheduler({
 			prisma: asAnyPrisma,
 			familyId: 10,
@@ -403,10 +388,6 @@ describe("runFamilyReminderScheduler", () => {
 			prismaMock.user.findMany as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue([]);
 
-		(
-			prismaMock.notification.findFirst as unknown as ReturnType<typeof vi.fn>
-		).mockResolvedValue(null);
-
 		await runFamilyReminderScheduler({
 			prisma: asAnyPrisma,
 			familyId: 10,
@@ -422,21 +403,17 @@ describe("runFamilyReminderScheduler", () => {
 		);
 	});
 
-	it("does not create duplicate event reminders within the duplicate window", async () => {
+	it("keeps task reminders idempotent across delayed and retried runs", async () => {
 		const now = new Date("2026-04-14T12:00:00.000Z");
+		const delayedNow = new Date("2026-04-14T12:15:00.000Z");
 
 		(
 			prismaMock.task.findMany as unknown as ReturnType<typeof vi.fn>
-		).mockResolvedValue([]);
-
-		(
-			prismaMock.event.findMany as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue([
 			{
 				id: 8,
-				title: "Dance practice",
-				// starts in exactly 60 minutes
-				startTime: new Date("2026-04-14T13:00:00.000Z"),
+				title: "Laundry",
+				dueDate: new Date("2026-04-14T11:59:00.000Z"),
 				assignments: [
 					{
 						familyMember: { userId: 500 },
@@ -446,21 +423,95 @@ describe("runFamilyReminderScheduler", () => {
 		]);
 
 		(
+			prismaMock.event.findMany as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue([]);
+
+		(
 			prismaMock.user.findMany as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue([]);
 
-		// Simulate existing reminder within the duplicate window
-		(
-			prismaMock.notification.findFirst as unknown as ReturnType<typeof vi.fn>
-		).mockResolvedValue({ id: 123 });
+		(createTaskDeadlineNotification as unknown as ReturnType<typeof vi.fn>)
+			.mockResolvedValueOnce({ id: 1 })
+			.mockResolvedValueOnce(null);
 
-		const result = await runFamilyReminderScheduler({
+		const firstResult = await runFamilyReminderScheduler({
 			prisma: asAnyPrisma,
 			familyId: 10,
 			now,
 		});
 
-		expect(createEventReminderNotification).not.toHaveBeenCalled();
-		expect(result.createdEventNotifications).toBe(0);
+		const secondResult = await runFamilyReminderScheduler({
+			prisma: asAnyPrisma,
+			familyId: 10,
+			now: delayedNow,
+		});
+
+		expect(firstResult.createdTaskNotifications).toBe(1);
+		expect(secondResult.createdTaskNotifications).toBe(0);
+
+		const createCalls = (
+			createTaskDeadlineNotification as unknown as ReturnType<typeof vi.fn>
+		).mock.calls;
+		expect(createCalls).toHaveLength(2);
+		expect(createCalls[0][0].reminderKey).toBe(createCalls[1][0].reminderKey);
+		expect(createCalls[0][0].reminderKey).toBe(
+			"task:8:user:500:slot:2026-04-14T11:59:00.000Z",
+		);
+	});
+
+	it("keeps event reminders idempotent across delayed and retried runs", async () => {
+		const now = new Date("2026-04-14T12:00:00.000Z");
+		const delayedNow = new Date("2026-04-14T12:20:00.000Z");
+
+		(
+			prismaMock.task.findMany as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue([]);
+
+		(
+			prismaMock.event.findMany as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue([
+			{
+				id: 9,
+				title: "Piano class",
+				startTime: new Date("2026-04-14T13:00:00.000Z"),
+				assignments: [
+					{
+						familyMember: { userId: 900 },
+					},
+				],
+			},
+		]);
+
+		(
+			prismaMock.user.findMany as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue([]);
+
+		(createEventReminderNotification as unknown as ReturnType<typeof vi.fn>)
+			.mockResolvedValueOnce({ id: 1 })
+			.mockResolvedValueOnce(null);
+
+		const firstResult = await runFamilyReminderScheduler({
+			prisma: asAnyPrisma,
+			familyId: 10,
+			now,
+		});
+
+		const secondResult = await runFamilyReminderScheduler({
+			prisma: asAnyPrisma,
+			familyId: 10,
+			now: delayedNow,
+		});
+
+		expect(firstResult.createdEventNotifications).toBe(1);
+		expect(secondResult.createdEventNotifications).toBe(0);
+
+		const createCalls = (
+			createEventReminderNotification as unknown as ReturnType<typeof vi.fn>
+		).mock.calls;
+		expect(createCalls).toHaveLength(2);
+		expect(createCalls[0][0].reminderKey).toBe(createCalls[1][0].reminderKey);
+		expect(createCalls[0][0].reminderKey).toBe(
+			"event:9:user:900:slot:2026-04-14T12:00:00.000Z",
+		);
 	});
 });

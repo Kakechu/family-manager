@@ -21,6 +21,7 @@ import {
 	listNotifications,
 	markAllNotificationsRead,
 	markNotificationRead,
+	runReminderScheduler,
 } from "./services/notifications";
 
 interface NotificationsState {
@@ -126,6 +127,17 @@ function App() {
 		}));
 
 		try {
+			try {
+				await runReminderScheduler();
+			} catch (error) {
+				if (
+					!axios.isAxiosError(error) ||
+					![403, 404].includes(error.response?.status ?? 0)
+				) {
+					throw error;
+				}
+			}
+
 			const response = await listNotifications();
 			setNotificationsState((prev) => ({
 				...prev,
@@ -166,6 +178,14 @@ function App() {
 
 		void loadNotifications();
 	}, [authUser, loadNotifications]);
+
+	useEffect(() => {
+		if (!authUser || activeView !== "notifications") {
+			return;
+		}
+
+		void loadNotifications();
+	}, [authUser, activeView, loadNotifications]);
 
 	const handleMarkRead = React.useCallback(
 		async (id: number): Promise<void> => {

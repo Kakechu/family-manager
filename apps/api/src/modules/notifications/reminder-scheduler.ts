@@ -25,13 +25,24 @@ export interface ReminderSchedulerResult {
 
 // How far back we still create reminders for overdue items (in minutes).
 const TASK_REMINDER_PAST_WINDOW_MINUTES = 60 * 24; // 24 hours
-const TASK_REMINDER_DUP_WINDOW_MINUTES = 5; // treat notifications within ±5 minutes as duplicates
 
 const EVENT_REMINDER_LEAD_MINUTES = 60; // default: 1 hour before start
 const EVENT_REMINDER_PAST_WINDOW_MINUTES = 60 * 24; // 24 hours
-const EVENT_REMINDER_DUP_WINDOW_MINUTES = 5; // treat notifications within ±5 minutes as duplicates
 
 const minutesToMs = (minutes: number): number => minutes * 60 * 1000;
+
+const buildTaskReminderSlotKey = (
+	userId: number,
+	taskId: number,
+	reminderTime: Date,
+): string => `task:${taskId}:user:${userId}:slot:${reminderTime.toISOString()}`;
+
+const buildEventReminderSlotKey = (
+	userId: number,
+	eventId: number,
+	reminderTime: Date,
+): string =>
+	`event:${eventId}:user:${userId}:slot:${reminderTime.toISOString()}`;
 
 const buildTaskReminderMessage = (
 	title: string,
@@ -144,36 +155,17 @@ export const runFamilyReminderScheduler = async ({
 		}
 
 		for (const userId of assignedUserIds) {
-			const existing = await prisma.notification.findFirst({
-				where: {
-					type: "TASK_REMINDER",
-					userId,
-					taskId: task.id,
-					createdAt: {
-						gte: new Date(
-							reminderTime.getTime() -
-								minutesToMs(TASK_REMINDER_DUP_WINDOW_MINUTES),
-						),
-						lte: new Date(
-							reminderTime.getTime() +
-								minutesToMs(TASK_REMINDER_DUP_WINDOW_MINUTES),
-						),
-					},
-				},
-			});
-
-			if (existing) {
-				continue;
-			}
-
-			await createTaskDeadlineNotification({
+			const created = await createTaskDeadlineNotification({
 				prisma,
 				userId,
 				taskId: task.id,
+				reminderKey: buildTaskReminderSlotKey(userId, task.id, reminderTime),
 				message: buildTaskReminderMessage(task.title, reminderTime, nowUtc),
 			});
 
-			createdTaskNotifications += 1;
+			if (created) {
+				createdTaskNotifications += 1;
+			}
 		}
 	}
 
@@ -241,32 +233,11 @@ export const runFamilyReminderScheduler = async ({
 		}
 
 		for (const userId of assignedUserIds) {
-			const existing = await prisma.notification.findFirst({
-				where: {
-					type: "EVENT_REMINDER",
-					userId,
-					eventId: event.id,
-					createdAt: {
-						gte: new Date(
-							reminderTime.getTime() -
-								minutesToMs(EVENT_REMINDER_DUP_WINDOW_MINUTES),
-						),
-						lte: new Date(
-							reminderTime.getTime() +
-								minutesToMs(EVENT_REMINDER_DUP_WINDOW_MINUTES),
-						),
-					},
-				},
-			});
-
-			if (existing) {
-				continue;
-			}
-
-			await createEventReminderNotification({
+			const created = await createEventReminderNotification({
 				prisma,
 				userId,
 				eventId: event.id,
+				reminderKey: buildEventReminderSlotKey(userId, event.id, reminderTime),
 				message: buildEventReminderMessage(
 					event.title,
 					event.startTime,
@@ -274,7 +245,9 @@ export const runFamilyReminderScheduler = async ({
 				),
 			});
 
-			createdEventNotifications += 1;
+			if (created) {
+				createdEventNotifications += 1;
+			}
 		}
 	}
 

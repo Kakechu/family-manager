@@ -116,7 +116,7 @@ model Event {
   familyId Int
   family   Family @relation(fields: [familyId], references: [id])
 
-  assignments  EventAssignment[]
+  assignments   EventAssignment[]
   notifications Notification[]
 }
 
@@ -148,7 +148,7 @@ model Comment {
   createdAt DateTime @default(now())
 
   taskId Int
-  task   Task @relation(fields: [taskId], references: [id])
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   userId Int
   user   User @relation(fields: [userId], references: [id])
@@ -160,22 +160,23 @@ model Notification {
   type      NotificationType
   isRead    Boolean @default(false)
   createdAt DateTime @default(now())
+  reminderKey String? @unique
 
   userId Int
   user   User @relation(fields: [userId], references: [id])
 
   taskId Int?
-  task   Task? @relation(fields: [taskId], references: [id])
+  task   Task? @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   eventId Int?
-  event   Event? @relation(fields: [eventId], references: [id])
+  event   Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }
 
 model TaskAssignment {
   taskId         Int
   familyMemberId Int
 
-  task         Task         @relation(fields: [taskId], references: [id])
+  task         Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
   familyMember FamilyMember @relation(fields: [familyMemberId], references: [id])
 
   @@id([taskId, familyMemberId])
@@ -186,7 +187,7 @@ model EventAssignment {
   familyMemberId Int
   attendanceStatus AttendanceStatus
 
-  event        Event        @relation(fields: [eventId], references: [id])
+  event        Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
   familyMember FamilyMember @relation(fields: [familyMemberId], references: [id])
 
   @@id([eventId, familyMemberId])

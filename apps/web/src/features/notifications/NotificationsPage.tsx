@@ -91,13 +91,18 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
 								: `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`}
 						</Typography>
 					</Box>
-					<Button
-						variant="outlined"
-						onClick={() => void onMarkAllRead()}
-						disabled={markingAllRead || unreadCount === 0 || loading}
-					>
-						{markingAllRead ? "Marking..." : "Mark all as read"}
-					</Button>
+					<Box display="flex" gap={1}>
+						<Button variant="outlined" onClick={onRefresh} disabled={loading}>
+							Refresh
+						</Button>
+						<Button
+							variant="outlined"
+							onClick={() => void onMarkAllRead()}
+							disabled={markingAllRead || unreadCount === 0 || loading}
+						>
+							{markingAllRead ? "Marking..." : "Mark all as read"}
+						</Button>
+					</Box>
 				</Box>
 
 				{fallbackMessage && <Alert severity="info">{fallbackMessage}</Alert>}

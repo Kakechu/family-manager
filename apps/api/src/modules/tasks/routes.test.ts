@@ -229,6 +229,33 @@ describe("tasks routes", () => {
 		);
 	});
 
+	it("deletes a task when it belongs to the family", async () => {
+		(
+			prismaMock.task.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 5,
+			title: "Clean room",
+			description: null,
+			dueDate: null,
+			isCompleted: false,
+			recurrenceType: "NONE",
+			categoryId: 1,
+			createdBy: 1,
+			familyId: 10,
+		});
+
+		(
+			prismaMock.task.delete as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({});
+
+		const app = buildApp();
+
+		const response = await request(app).delete("/api/v1/tasks/5");
+
+		expect(response.status).toBe(204);
+		expect(prismaMock.task.delete).toHaveBeenCalledWith({ where: { id: 5 } });
+	});
+
 	it("rejects patch that makes a recurring task have no due date", async () => {
 		(
 			prismaMock.task.findFirst as unknown as ReturnType<typeof vi.fn>
