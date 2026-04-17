@@ -50,98 +50,104 @@ const toEventDto = (event: {
 
 router.use(authenticate);
 
-router.get("/", asyncHandler(async (req: AuthenticatedRequest, res) => {
-	if (!req.auth) {
-		sendError(res, 401, "UNAUTHORIZED", "Authentication required");
-		return;
-	}
-
-	const parsedQuery = querySchema.safeParse(req.query);
-
-	if (!parsedQuery.success) {
-		sendError(
-			res,
-			400,
-			"VALIDATION_ERROR",
-			"Invalid query parameters",
-			parsedQuery.error.flatten(),
-		);
-		return;
-	}
-
-	const { from, to, familyMemberId, categoryId, includeUnassigned } =
-		parsedQuery.data;
-
-	const where: Prisma.EventWhereInput = {
-		familyId: req.auth.familyId,
-		...(categoryId ? { categoryId } : {}),
-		...(from || to
-			? {
-					startTime: from ? { gte: new Date(from) } : undefined,
-					endTime: to ? { lte: new Date(to) } : undefined,
-				}
-			: {}),
-	};
-
-	if (familyMemberId) {
-		if (includeUnassigned) {
-			where.AND = [
-				{
-					OR: [
-						{ assignments: { some: { familyMemberId } } },
-						{ assignments: { none: {} } },
-					],
-				},
-			];
-		} else {
-			where.assignments = { some: { familyMemberId } };
+router.get(
+	"/",
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
 		}
-	}
 
-	const events = await prisma.event.findMany({
-		where,
-		orderBy: { startTime: "asc" },
-	});
+		const parsedQuery = querySchema.safeParse(req.query);
 
-	const dtos = events.map(toEventDto);
+		if (!parsedQuery.success) {
+			sendError(
+				res,
+				400,
+				"VALIDATION_ERROR",
+				"Invalid query parameters",
+				parsedQuery.error.flatten(),
+			);
+			return;
+		}
 
-	sendList(res, 200, dtos);
-}));
+		const { from, to, familyMemberId, categoryId, includeUnassigned } =
+			parsedQuery.data;
 
-router.get("/:id", asyncHandler(async (req: AuthenticatedRequest, res) => {
-	if (!req.auth) {
-		sendError(res, 401, "UNAUTHORIZED", "Authentication required");
-		return;
-	}
-
-	const id = Number(req.params.id);
-
-	if (!Number.isFinite(id)) {
-		sendError(res, 400, "VALIDATION_ERROR", "Invalid event id");
-		return;
-	}
-
-	const event = await prisma.event.findFirst({
-		where: {
-			id,
+		const where: Prisma.EventWhereInput = {
 			familyId: req.auth.familyId,
-		},
-	});
+			...(categoryId ? { categoryId } : {}),
+			...(from || to
+				? {
+						startTime: from ? { gte: new Date(from) } : undefined,
+						endTime: to ? { lte: new Date(to) } : undefined,
+					}
+				: {}),
+		};
 
-	if (!event) {
-		sendError(res, 404, "EVENT_NOT_FOUND", "Event not found");
-		return;
-	}
+		if (familyMemberId) {
+			if (includeUnassigned) {
+				where.AND = [
+					{
+						OR: [
+							{ assignments: { some: { familyMemberId } } },
+							{ assignments: { none: {} } },
+						],
+					},
+				];
+			} else {
+				where.assignments = { some: { familyMemberId } };
+			}
+		}
 
-	const dto = toEventDto(event);
+		const events = await prisma.event.findMany({
+			where,
+			orderBy: { startTime: "asc" },
+		});
 
-	sendData(res, 200, dto);
-}));
+		const dtos = events.map(toEventDto);
+
+		sendList(res, 200, dtos);
+	}),
+);
+
+router.get(
+	"/:id",
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
+		}
+
+		const id = Number(req.params.id);
+
+		if (!Number.isFinite(id)) {
+			sendError(res, 400, "VALIDATION_ERROR", "Invalid event id");
+			return;
+		}
+
+		const event = await prisma.event.findFirst({
+			where: {
+				id,
+				familyId: req.auth.familyId,
+			},
+		});
+
+		if (!event) {
+			sendError(res, 404, "EVENT_NOT_FOUND", "Event not found");
+			return;
+		}
+
+		const dto = toEventDto(event);
+
+		sendData(res, 200, dto);
+	}),
+);
 
 router.post(
 	"/",
 	requireRole([UserRole.PARENT]),
-		asyncHandler(async (req: AuthenticatedRequest, res) => {
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
 		if (!req.auth) {
 			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
 			return;
@@ -183,7 +189,7 @@ router.post(
 router.patch(
 	"/:id",
 	requireRole([UserRole.PARENT]),
-		asyncHandler(async (req: AuthenticatedRequest, res) => {
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
 		if (!req.auth) {
 			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
 			return;
@@ -245,7 +251,7 @@ router.patch(
 router.delete(
 	"/:id",
 	requireRole([UserRole.PARENT]),
-		asyncHandler(async (req: AuthenticatedRequest, res) => {
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
 		if (!req.auth) {
 			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
 			return;

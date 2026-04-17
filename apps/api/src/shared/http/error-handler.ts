@@ -1,4 +1,9 @@
-import type { ErrorRequestHandler, NextFunction, Request, Response } from "express";
+import type {
+	ErrorRequestHandler,
+	NextFunction,
+	Request,
+	Response,
+} from "express";
 import { sendError } from "./responses";
 
 type AsyncRouteHandler = (
@@ -23,7 +28,12 @@ export const asyncHandler = (handler: AsyncRouteHandler) => {
 	};
 };
 
-export const apiErrorHandler: ErrorRequestHandler = (error, _req, res, next) => {
+export const apiErrorHandler: ErrorRequestHandler = (
+	error,
+	_req,
+	res,
+	next,
+) => {
 	if (res.headersSent) {
 		next(error);
 		return;
@@ -31,7 +41,8 @@ export const apiErrorHandler: ErrorRequestHandler = (error, _req, res, next) => 
 
 	const normalizedError = (error ?? {}) as SanitizableError;
 	const status =
-		typeof normalizedError.status === "number" && isHttpStatus(normalizedError.status)
+		typeof normalizedError.status === "number" &&
+		isHttpStatus(normalizedError.status)
 			? normalizedError.status
 			: 500;
 
