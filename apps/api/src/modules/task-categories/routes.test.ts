@@ -88,7 +88,12 @@ describe("task categories routes", () => {
 		});
 		const body = response.body as {
 			data: TaskCategory[];
-			meta: { page: number; pageSize: number; totalItems: number; totalPages: number };
+			meta: {
+				page: number;
+				pageSize: number;
+				totalItems: number;
+				totalPages: number;
+			};
 		};
 		expect(body.data).toHaveLength(1);
 		expect(body.meta).toEqual({

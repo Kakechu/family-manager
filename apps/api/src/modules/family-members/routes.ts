@@ -16,7 +16,10 @@ import {
 } from "../../middleware/auth";
 import { prisma } from "../../shared/db/client";
 import { asyncHandler } from "../../shared/http/error-handler";
-import { buildPaginationMeta, getPaginationArgs } from "../../shared/http/pagination";
+import {
+	buildPaginationMeta,
+	getPaginationArgs,
+} from "../../shared/http/pagination";
 import { sendData, sendError, sendList } from "../../shared/http/responses";
 
 const router = Router();

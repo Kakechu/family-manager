@@ -164,7 +164,12 @@ describe("notifications routes - inbox and read state", () => {
 		expect(response.status).toBe(200);
 		const body = response.body as {
 			data: Notification[];
-			meta: { page: number; pageSize: number; totalItems: number; totalPages: number };
+			meta: {
+				page: number;
+				pageSize: number;
+				totalItems: number;
+				totalPages: number;
+			};
 		};
 		expect(body.data).toHaveLength(2);
 		expect(body.meta).toEqual({

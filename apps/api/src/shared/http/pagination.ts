@@ -10,7 +10,9 @@ export const buildPaginationMeta = (params: {
 		pageSize: params.pageSize,
 		totalItems: params.totalItems,
 		totalPages:
-			params.totalItems === 0 ? 0 : Math.ceil(params.totalItems / params.pageSize),
+			params.totalItems === 0
+				? 0
+				: Math.ceil(params.totalItems / params.pageSize),
 	};
 };
 
