@@ -38,6 +38,7 @@ const prismaMock = vi.hoisted(() => ({
 		findFirst: vi.fn(),
 		update: vi.fn(),
 		delete: vi.fn(),
+		count: vi.fn(),
 	},
 }));
 
@@ -63,6 +64,9 @@ describe("event categories routes", () => {
 
 	it("lists event categories", async () => {
 		(
+			prismaMock.eventCategory.count as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue(1);
+		(
 			prismaMock.eventCategory.findMany as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue([
 			{
@@ -80,9 +84,25 @@ describe("event categories routes", () => {
 		expect(prismaMock.eventCategory.findMany).toHaveBeenCalledWith({
 			where: { familyId: 10 },
 			orderBy: { id: "asc" },
+			skip: 0,
+			take: 20,
 		});
-		const body = response.body as { data: EventCategory[] };
+		const body = response.body as {
+			data: EventCategory[];
+			meta: {
+				page: number;
+				pageSize: number;
+				totalItems: number;
+				totalPages: number;
+			};
+		};
 		expect(body.data).toHaveLength(1);
+		expect(body.meta).toEqual({
+			page: 1,
+			pageSize: 20,
+			totalItems: 1,
+			totalPages: 1,
+		});
 		expect(body.data[0].name).toBe("School");
 	});
 

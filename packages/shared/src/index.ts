@@ -10,6 +10,7 @@ export * from "./contracts/task-categories/task-categories";
 export * from "./contracts/task-assignments/task-assignments";
 export * from "./contracts/comments/comments";
 export * from "./contracts/notifications/notifications";
+export * from "./contracts/pagination";
 
 export * from "./schemas/users/auth";
 export * from "./schemas/family-members/family-members";
@@ -21,3 +22,4 @@ export * from "./schemas/task-categories/task-categories";
 export * from "./schemas/task-assignments/task-assignments";
 export * from "./schemas/comments/comments";
 export * from "./schemas/notifications/notifications";
+export * from "./schemas/pagination";

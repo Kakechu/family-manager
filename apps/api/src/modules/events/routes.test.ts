@@ -46,6 +46,7 @@ const prismaMock = vi.hoisted(() => ({
 		create: vi.fn(),
 		update: vi.fn(),
 		delete: vi.fn(),
+		count: vi.fn(),
 	},
 	eventCategory: {
 		findFirst: vi.fn(),
@@ -74,6 +75,9 @@ describe("events routes", () => {
 
 	it("lists events scoped to family", async () => {
 		(
+			prismaMock.event.count as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue(1);
+		(
 			prismaMock.event.findMany as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue([
 			{
@@ -93,8 +97,22 @@ describe("events routes", () => {
 		const response = await request(app).get("/api/v1/events");
 
 		expect(response.status).toBe(200);
-		const body = response.body as { data: Event[] };
+		const body = response.body as {
+			data: Event[];
+			meta: {
+				page: number;
+				pageSize: number;
+				totalItems: number;
+				totalPages: number;
+			};
+		};
 		expect(body.data).toHaveLength(1);
+		expect(body.meta).toEqual({
+			page: 1,
+			pageSize: 20,
+			totalItems: 1,
+			totalPages: 1,
+		});
 		expect(body.data[0].title).toBe("Doctor appointment");
 		expect(body.data[0].familyId).toBe(10);
 	});
@@ -181,6 +199,9 @@ describe("events routes", () => {
 
 	it("applies family member filtering with includeUnassigned flag", async () => {
 		(
+			prismaMock.event.count as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue(0);
+		(
 			prismaMock.event.findMany as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue([]);
 
@@ -203,6 +224,8 @@ describe("events routes", () => {
 				],
 			},
 			orderBy: { startTime: "asc" },
+			skip: 0,
+			take: 20,
 		});
 	});
 

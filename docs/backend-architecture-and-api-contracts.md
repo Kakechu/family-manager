@@ -294,6 +294,7 @@ Concrete DTOs will be codified in packages/shared/src/contracts as TypeScript ty
   - pageSize: number of items per page (default: 20, maximum: 100).
 - Response meta:
   - { "page": number, "pageSize": number, "totalItems": number, "totalPages": number }
+  - When a filtered result set is empty, totalPages is 0.
 
 ### Filtering
 

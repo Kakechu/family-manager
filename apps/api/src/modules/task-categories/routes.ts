@@ -1,10 +1,11 @@
 import {
 	type TaskCategory,
 	createTaskCategorySchema,
+	paginationQuerySchema,
 	taskCategorySchema,
 	updateTaskCategorySchema,
 } from "@family-manager/shared";
-import { UserRole } from "@prisma/client";
+import { type Prisma, UserRole } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import {
@@ -14,9 +15,15 @@ import {
 } from "../../middleware/auth";
 import { prisma } from "../../shared/db/client";
 import { asyncHandler } from "../../shared/http/error-handler";
+import {
+	buildPaginationMeta,
+	getPaginationArgs,
+} from "../../shared/http/pagination";
 import { sendData, sendError, sendList } from "../../shared/http/responses";
 
 const router = Router();
+
+const querySchema = paginationQuerySchema;
 
 const toTaskCategoryDto = (category: {
 	id: number;
@@ -44,16 +51,39 @@ router.get(
 			return;
 		}
 
+		const parsedQuery = querySchema.safeParse(req.query);
+
+		if (!parsedQuery.success) {
+			sendError(
+				res,
+				400,
+				"VALIDATION_ERROR",
+				"Invalid query parameters",
+				parsedQuery.error.flatten(),
+			);
+			return;
+		}
+
+		const { page, pageSize } = parsedQuery.data;
+		const where = {
+			familyId: req.auth.familyId,
+		} as unknown as Prisma.TaskCategoryWhereInput;
+
+		const totalItems = await prisma.taskCategory.count({ where });
 		const categories = await prisma.taskCategory.findMany({
-			where: {
-				familyId: req.auth.familyId,
-			},
+			where,
 			orderBy: { id: "asc" },
+			...getPaginationArgs({ page, pageSize }),
 		});
 
 		const dtos = categories.map(toTaskCategoryDto);
 
-		sendList(res, 200, dtos);
+		sendList(
+			res,
+			200,
+			dtos,
+			buildPaginationMeta({ page, pageSize, totalItems }),
+		);
 	}),
 );
 

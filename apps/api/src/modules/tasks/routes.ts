@@ -1,6 +1,7 @@
 import {
 	type Task,
 	createTaskSchema,
+	paginationQuerySchema,
 	taskSchema,
 	updateTaskSchema,
 } from "@family-manager/shared";
@@ -14,11 +15,15 @@ import {
 } from "../../middleware/auth";
 import { prisma } from "../../shared/db/client";
 import { apiErrorHandler, asyncHandler } from "../../shared/http/error-handler";
+import {
+	buildPaginationMeta,
+	getPaginationArgs,
+} from "../../shared/http/pagination";
 import { sendData, sendError, sendList } from "../../shared/http/responses";
 
 const router = Router();
 
-const querySchema = z.object({
+const querySchema = paginationQuerySchema.extend({
 	familyMemberId: z.coerce.number().int().positive().optional(),
 	categoryId: z.coerce.number().int().positive().optional(),
 	isCompleted: z.coerce.boolean().optional(),
@@ -73,7 +78,8 @@ router.get(
 			return;
 		}
 
-		const { familyMemberId, categoryId, isCompleted } = parsedQuery.data;
+		const { page, pageSize, familyMemberId, categoryId, isCompleted } =
+			parsedQuery.data;
 
 		const where: Prisma.TaskWhereInput = {
 			familyId: req.auth.familyId,
@@ -85,14 +91,21 @@ router.get(
 			where.assignments = { some: { familyMemberId } };
 		}
 
+		const totalItems = await prisma.task.count({ where });
 		const tasks = await prisma.task.findMany({
 			where,
 			orderBy: [{ dueDate: "asc" }, { id: "asc" }],
+			...getPaginationArgs({ page, pageSize }),
 		});
 
 		const dtos = tasks.map(toTaskDto);
 
-		sendList(res, 200, dtos);
+		sendList(
+			res,
+			200,
+			dtos,
+			buildPaginationMeta({ page, pageSize, totalItems }),
+		);
 	}),
 );
 

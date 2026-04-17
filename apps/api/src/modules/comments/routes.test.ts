@@ -12,7 +12,7 @@ const authState = vi.hoisted(() => ({
 	current: {
 		userId: 1,
 		familyId: 10,
-		role: "PARENT" as const,
+		role: "PARENT" as "PARENT" | "CHILD",
 	},
 }));
 
@@ -45,6 +45,7 @@ const prismaMock = vi.hoisted(() => ({
 	comment: {
 		findMany: vi.fn(),
 		create: vi.fn(),
+		count: vi.fn(),
 	},
 	familyMember: {
 		findFirst: vi.fn(),
@@ -88,6 +89,9 @@ describe("comments routes", () => {
 		});
 
 		(
+			prismaMock.comment.count as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue(1);
+		(
 			prismaMock.comment.findMany as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue([
 			{
@@ -112,8 +116,22 @@ describe("comments routes", () => {
 			.query({ taskId: 1 });
 
 		expect(response.status).toBe(200);
-		const body = response.body as { data: Comment[] };
+		const body = response.body as {
+			data: Comment[];
+			meta: {
+				page: number;
+				pageSize: number;
+				totalItems: number;
+				totalPages: number;
+			};
+		};
 		expect(body.data).toHaveLength(1);
+		expect(body.meta).toEqual({
+			page: 1,
+			pageSize: 20,
+			totalItems: 1,
+			totalPages: 1,
+		});
 		expect(body.data[0].text).toBe("First comment");
 		expect(body.data[0].authorName).toBe("Jamie Smith");
 	});
@@ -126,6 +144,9 @@ describe("comments routes", () => {
 			familyId: 10,
 		});
 
+		(
+			prismaMock.comment.count as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue(1);
 		(
 			prismaMock.comment.findMany as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue([
@@ -149,7 +170,21 @@ describe("comments routes", () => {
 			.query({ taskId: 1 });
 
 		expect(response.status).toBe(200);
-		const body = response.body as { data: Comment[] };
+		const body = response.body as {
+			data: Comment[];
+			meta: {
+				page: number;
+				pageSize: number;
+				totalItems: number;
+				totalPages: number;
+			};
+		};
+		expect(body.meta).toEqual({
+			page: 1,
+			pageSize: 20,
+			totalItems: 1,
+			totalPages: 1,
+		});
 		expect(body.data[0].authorName).toBeUndefined();
 	});
 

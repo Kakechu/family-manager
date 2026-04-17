@@ -1,4 +1,8 @@
-import { type Notification, notificationSchema } from "@family-manager/shared";
+import {
+	type Notification,
+	notificationSchema,
+	paginationQuerySchema,
+} from "@family-manager/shared";
 import { UserRole } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
@@ -9,12 +13,16 @@ import {
 } from "../../middleware/auth";
 import { prisma } from "../../shared/db/client";
 import { asyncHandler } from "../../shared/http/error-handler";
+import {
+	buildPaginationMeta,
+	getPaginationArgs,
+} from "../../shared/http/pagination";
 import { sendData, sendError, sendList } from "../../shared/http/responses";
 import { runFamilyReminderScheduler } from "./reminder-scheduler";
 
 const router = Router();
 
-const notificationQuerySchema = z.object({
+const notificationQuerySchema = paginationQuerySchema.extend({
 	isRead: z.enum(["true", "false"]).optional(),
 	type: z.enum(["TASK_REMINDER", "EVENT_REMINDER", "OTHER"]).optional(),
 });
@@ -64,18 +72,30 @@ router.get(
 			return;
 		}
 
+		const { page, pageSize } = parsedQuery.data;
+		const notificationsWhere = {
+			userId: req.auth.userId,
+			...(parsedQuery.data.isRead
+				? { isRead: parsedQuery.data.isRead === "true" }
+				: {}),
+			...(parsedQuery.data.type ? { type: parsedQuery.data.type } : {}),
+		};
+
+		const totalItems = await prisma.notification.count({
+			where: notificationsWhere,
+		});
 		const notifications = await prisma.notification.findMany({
-			where: {
-				userId: req.auth.userId,
-				...(parsedQuery.data.isRead
-					? { isRead: parsedQuery.data.isRead === "true" }
-					: {}),
-				...(parsedQuery.data.type ? { type: parsedQuery.data.type } : {}),
-			},
+			where: notificationsWhere,
 			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+			...getPaginationArgs({ page, pageSize }),
 		});
 
-		sendList(res, 200, notifications.map(toNotificationDto));
+		sendList(
+			res,
+			200,
+			notifications.map(toNotificationDto),
+			buildPaginationMeta({ page, pageSize, totalItems }),
+		);
 	}),
 );
 

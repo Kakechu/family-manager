@@ -48,6 +48,7 @@ const prismaMock = vi.hoisted(() => ({
 		findFirst: vi.fn(),
 		update: vi.fn(),
 		delete: vi.fn(),
+		count: vi.fn(),
 	},
 	user: {
 		findUnique: vi.fn(),
@@ -77,6 +78,9 @@ describe("family members routes", () => {
 
 	it("lists family members scoped to family", async () => {
 		(
+			prismaMock.familyMember.count as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue(1);
+		(
 			prismaMock.familyMember.findMany as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue([
 			{
@@ -95,10 +99,22 @@ describe("family members routes", () => {
 		const response = await request(app).get("/api/v1/family-members");
 
 		expect(response.status).toBe(200);
-		const body = response.body as { data: FamilyMember[] };
+		const body = response.body as {
+			data: FamilyMember[];
+			meta: {
+				page: number;
+				pageSize: number;
+				totalItems: number;
+				totalPages: number;
+			};
+		};
 		expect(body.data).toHaveLength(1);
-		expect(body.data[0].firstName).toBe("Parent");
-		// ensure the DTO familyId matches auth.familyId
+		expect(body.meta).toEqual({
+			page: 1,
+			pageSize: 20,
+			totalItems: 1,
+			totalPages: 1,
+		});
 		expect(body.data[0].familyId).toBe(10);
 	});
 

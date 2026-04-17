@@ -2,6 +2,7 @@ import {
 	type EventAssignment,
 	addEventAssignmentsSchema,
 	eventAssignmentSchema,
+	paginationQuerySchema,
 	updateEventAssignmentSchema,
 } from "@family-manager/shared";
 import { UserRole } from "@prisma/client";
@@ -14,11 +15,15 @@ import {
 } from "../../middleware/auth";
 import { prisma } from "../../shared/db/client";
 import { asyncHandler } from "../../shared/http/error-handler";
+import {
+	buildPaginationMeta,
+	getPaginationArgs,
+} from "../../shared/http/pagination";
 import { sendData, sendError, sendList } from "../../shared/http/responses";
 
 const router = Router();
 
-const querySchema = z.object({
+const querySchema = paginationQuerySchema.extend({
 	eventId: z.coerce.number().int().positive(),
 });
 
@@ -62,7 +67,7 @@ router.get(
 			return;
 		}
 
-		const { eventId } = parsedQuery.data;
+		const { page, pageSize, eventId } = parsedQuery.data;
 
 		const event = await prisma.event.findFirst({
 			where: {
@@ -76,14 +81,22 @@ router.get(
 			return;
 		}
 
+		const where = { eventId };
+		const totalItems = await prisma.eventAssignment.count({ where });
 		const assignments = await prisma.eventAssignment.findMany({
-			where: { eventId },
+			where,
 			orderBy: { familyMemberId: "asc" },
+			...getPaginationArgs({ page, pageSize }),
 		});
 
 		const dtos = assignments.map(toEventAssignmentDto);
 
-		sendList(res, 200, dtos);
+		sendList(
+			res,
+			200,
+			dtos,
+			buildPaginationMeta({ page, pageSize, totalItems }),
+		);
 	}),
 );
 
