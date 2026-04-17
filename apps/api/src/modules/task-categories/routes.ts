@@ -61,10 +61,10 @@ router.post(
 	"/",
 	requireRole([UserRole.PARENT]),
 	asyncHandler(async (req: AuthenticatedRequest, res) => {
-			if (!req.auth) {
-				sendError(res, 401, "UNAUTHORIZED", "Authentication required");
-				return;
-			}
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
+		}
 
 		const parsed = createTaskCategorySchema.safeParse(req.body);
 
