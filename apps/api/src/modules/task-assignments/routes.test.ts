@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { TaskAssignment } from "@family-manager/shared";
 import type { AuthenticatedRequest } from "../../middleware/auth";
+import { apiErrorHandler } from "../../shared/http/error-handler";
 import taskAssignmentsRouter from "./routes";
 
 vi.mock("../../middleware/auth", () => {
@@ -57,6 +58,7 @@ const buildApp = () => {
 	app.use(express.json());
 	app.use(cookieParser());
 	app.use("/api/v1/task-assignments", taskAssignmentsRouter);
+	app.use(apiErrorHandler);
 	return app;
 };
 
@@ -196,5 +198,29 @@ describe("task assignments routes", () => {
 		expect(response.status).toBe(404);
 		expect(response.body.error).toBeDefined();
 		expect(response.body.error.code).toBe("TASK_ASSIGNMENT_NOT_FOUND");
+	});
+
+	it("returns standardized error envelope on GET assignments async failure", async () => {
+		(
+			prismaMock.task.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 1,
+			familyId: 10,
+		});
+
+		(
+			prismaMock.taskAssignment.findMany as unknown as ReturnType<typeof vi.fn>
+		).mockRejectedValue(new Error("database failure"));
+
+		const app = buildApp();
+
+		const response = await request(app)
+			.get("/api/v1/task-assignments")
+			.query({ taskId: 1 });
+
+		expect(response.status).toBe(500);
+		expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+		expect(response.body.error.message).toBe("Internal server error");
+		expect(response.body.error.message).not.toContain("database");
 	});
 });

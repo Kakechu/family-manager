@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { EventAssignment } from "@family-manager/shared";
 import type { AuthenticatedRequest } from "../../middleware/auth";
+import { apiErrorHandler } from "../../shared/http/error-handler";
 import eventAssignmentsRouter from "./routes";
 
 vi.mock("../../middleware/auth", () => {
@@ -58,6 +59,7 @@ const buildApp = () => {
 	app.use(express.json());
 	app.use(cookieParser());
 	app.use("/api/v1/event-assignments", eventAssignmentsRouter);
+	app.use(apiErrorHandler);
 	return app;
 };
 
@@ -138,5 +140,29 @@ describe("event assignments routes", () => {
 		expect(response.status).toBe(201);
 		const body = response.body as { data: EventAssignment[] };
 		expect(body.data).toHaveLength(2);
+	});
+
+	it("returns standardized error envelope on GET assignments async failure", async () => {
+		(
+			prismaMock.event.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 1,
+			familyId: 10,
+		});
+
+		(
+			prismaMock.eventAssignment.findMany as unknown as ReturnType<typeof vi.fn>
+		).mockRejectedValue(new Error("database failure"));
+
+		const app = buildApp();
+
+		const response = await request(app)
+			.get("/api/v1/event-assignments")
+			.query({ eventId: 1 });
+
+		expect(response.status).toBe(500);
+		expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+		expect(response.body.error.message).toBe("Internal server error");
+		expect(response.body.error.message).not.toContain("database");
 	});
 });

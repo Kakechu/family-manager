@@ -4,6 +4,7 @@ import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AuthUser } from "@family-manager/shared";
+import { apiErrorHandler } from "../../shared/http/error-handler";
 import authRouter from "./routes";
 
 // Use vi.hoisted so prismaMock is initialized safely before mocked module evaluation
@@ -42,6 +43,7 @@ const buildApp = () => {
 	app.use(express.json());
 	app.use(cookieParser());
 	app.use("/api/v1/auth", authRouter);
+	app.use(apiErrorHandler);
 	return app;
 };
 
@@ -137,5 +139,52 @@ describe("auth routes", () => {
 		expect(body.data.email).toBe("parent@example.com");
 		expect(body.data.familyId).toBe(10);
 		expect(response.headers["set-cookie"]).toBeDefined();
+	});
+
+	// Regression tests: async error containment
+	// Verify that forced async failures return standardized error envelope
+
+	it("returns standardized error envelope on register async failure", async () => {
+		// Force an async error in findUnique
+		(
+			prismaMock.user.findUnique as unknown as ReturnType<typeof vi.fn>
+		).mockRejectedValue(new Error("Database connection lost"));
+
+		const app = buildApp();
+
+		const response = await request(app).post("/api/v1/auth/register").send({
+			email: "parent@example.com",
+			password: "Password123!",
+			familyName: "Doe family",
+			firstName: "Parent",
+			lastName: "One",
+		});
+
+		expect(response.status).toBe(500);
+		expect(response.body.error).toBeDefined();
+		expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+		expect(response.body.error.message).toBe("Internal server error");
+		// Verify internal error details are NOT exposed
+		expect(response.body.error.message).not.toContain("Database connection");
+	});
+
+	it("returns standardized error envelope on login async failure", async () => {
+		// Force an async error
+		(
+			prismaMock.user.findUnique as unknown as ReturnType<typeof vi.fn>
+		).mockRejectedValue(new Error("Network timeout"));
+
+		const app = buildApp();
+
+		const response = await request(app)
+			.post("/api/v1/auth/login")
+			.send({ email: "test@example.com", password: "Password123!" });
+
+		expect(response.status).toBe(500);
+		expect(response.body.error).toBeDefined();
+		expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+		expect(response.body.error.message).toBe("Internal server error");
+		// Verify internal details are NOT exposed
+		expect(response.body.error.message).not.toContain("Network");
 	});
 });

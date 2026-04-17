@@ -8,6 +8,7 @@ import {
 	requireRole,
 } from "../../middleware/auth";
 import { prisma } from "../../shared/db/client";
+import { asyncHandler } from "../../shared/http/error-handler";
 import { sendData, sendError, sendList } from "../../shared/http/responses";
 import { runFamilyReminderScheduler } from "./reminder-scheduler";
 
@@ -42,99 +43,108 @@ const toNotificationDto = (notification: {
 
 router.use(authenticate);
 
-router.get("/", async (req: AuthenticatedRequest, res) => {
-	if (!req.auth) {
-		sendError(res, 401, "UNAUTHORIZED", "Authentication required");
-		return;
-	}
+router.get(
+	"/",
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
+		}
 
-	const parsedQuery = notificationQuerySchema.safeParse(req.query);
+		const parsedQuery = notificationQuerySchema.safeParse(req.query);
 
-	if (!parsedQuery.success) {
-		sendError(
-			res,
-			400,
-			"VALIDATION_ERROR",
-			"Invalid notification query parameters",
-			parsedQuery.error.flatten(),
-		);
-		return;
-	}
+		if (!parsedQuery.success) {
+			sendError(
+				res,
+				400,
+				"VALIDATION_ERROR",
+				"Invalid notification query parameters",
+				parsedQuery.error.flatten(),
+			);
+			return;
+		}
 
-	const notifications = await prisma.notification.findMany({
-		where: {
-			userId: req.auth.userId,
-			...(parsedQuery.data.isRead
-				? { isRead: parsedQuery.data.isRead === "true" }
-				: {}),
-			...(parsedQuery.data.type ? { type: parsedQuery.data.type } : {}),
-		},
-		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-	});
+		const notifications = await prisma.notification.findMany({
+			where: {
+				userId: req.auth.userId,
+				...(parsedQuery.data.isRead
+					? { isRead: parsedQuery.data.isRead === "true" }
+					: {}),
+				...(parsedQuery.data.type ? { type: parsedQuery.data.type } : {}),
+			},
+			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+		});
 
-	sendList(res, 200, notifications.map(toNotificationDto));
-});
+		sendList(res, 200, notifications.map(toNotificationDto));
+	}),
+);
 
-router.patch("/:id/read", async (req: AuthenticatedRequest, res) => {
-	if (!req.auth) {
-		sendError(res, 401, "UNAUTHORIZED", "Authentication required");
-		return;
-	}
+router.patch(
+	"/:id/read",
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
+		}
 
-	const id = Number(req.params.id);
+		const id = Number(req.params.id);
 
-	if (!Number.isFinite(id)) {
-		sendError(res, 400, "VALIDATION_ERROR", "Invalid notification id");
-		return;
-	}
+		if (!Number.isFinite(id)) {
+			sendError(res, 400, "VALIDATION_ERROR", "Invalid notification id");
+			return;
+		}
 
-	const existing = await prisma.notification.findFirst({
-		where: {
-			id,
-			userId: req.auth.userId,
-		},
-	});
+		const existing = await prisma.notification.findFirst({
+			where: {
+				id,
+				userId: req.auth.userId,
+			},
+		});
 
-	if (!existing) {
-		sendError(res, 404, "NOTIFICATION_NOT_FOUND", "Notification not found");
-		return;
-	}
+		if (!existing) {
+			sendError(res, 404, "NOTIFICATION_NOT_FOUND", "Notification not found");
+			return;
+		}
 
-	const updated = await prisma.notification.update({
-		where: {
-			id,
-		},
-		data: {
-			isRead: true,
-		},
-	});
+		const updated = await prisma.notification.update({
+			where: {
+				id,
+			},
+			data: {
+				isRead: true,
+			},
+		});
 
-	sendData(res, 200, toNotificationDto(updated));
-});
+		sendData(res, 200, toNotificationDto(updated));
+	}),
+);
 
-router.post("/mark-all-read", async (req: AuthenticatedRequest, res) => {
-	if (!req.auth) {
-		sendError(res, 401, "UNAUTHORIZED", "Authentication required");
-		return;
-	}
+router.post(
+	"/mark-all-read",
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
+		}
 
-	const result = await prisma.notification.updateMany({
-		where: {
-			userId: req.auth.userId,
-			isRead: false,
-		},
-		data: {
-			isRead: true,
-		},
-	});
+		const result = await prisma.notification.updateMany({
+			where: {
+				userId: req.auth.userId,
+				isRead: false,
+			},
+			data: {
+				isRead: true,
+			},
+		});
 
-	sendData(res, 200, { updatedCount: result.count });
-});
+		sendData(res, 200, { updatedCount: result.count });
+	}),
+);
 
 router.post(
 	"/reminders/run",
 	requireRole([UserRole.PARENT]),
-	async (req: AuthenticatedRequest, res) => {
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
 		if (!req.auth) {
 			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
 			return;
@@ -154,7 +164,7 @@ router.post(
 		});
 
 		sendData(res, 200, result);
-	},
+	}),
 );
 
 export default router;

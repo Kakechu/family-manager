@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { type Comment, MAX_COMMENT_LENGTH } from "@family-manager/shared";
 import type { AuthenticatedRequest } from "../../middleware/auth";
+import { apiErrorHandler } from "../../shared/http/error-handler";
 import commentsRouter from "./routes";
 
 const authState = vi.hoisted(() => ({
@@ -64,6 +65,7 @@ const buildApp = () => {
 	app.use(express.json());
 	app.use(cookieParser());
 	app.use("/api/v1/comments", commentsRouter);
+	app.use(apiErrorHandler);
 	return app;
 };
 
@@ -329,5 +331,62 @@ describe("comments routes", () => {
 		expect(response.body.error.code).toBe("VALIDATION_ERROR");
 		expect(response.body.error.message).toBe("Invalid comment data");
 		expect(response.body.error.details).toBeDefined();
+	});
+
+	// Regression tests: async error containment
+	// Verify that forced async failures return standardized error envelope
+
+	it("returns standardized error envelope on GET comments async failure", async () => {
+		// Force an async error in findMany
+		(
+			prismaMock.task.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 1,
+			familyId: 10,
+		});
+
+		(
+			prismaMock.comment.findMany as unknown as ReturnType<typeof vi.fn>
+		).mockRejectedValue(new Error("Database connection lost"));
+
+		const app = buildApp();
+
+		const response = await request(app)
+			.get("/api/v1/comments")
+			.query({ taskId: 1 });
+
+		expect(response.status).toBe(500);
+		expect(response.body.error).toBeDefined();
+		expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+		expect(response.body.error.message).toBe("Internal server error");
+		// Verify internal error details are NOT exposed
+		expect(response.body.error.message).not.toContain("Database");
+	});
+
+	it("returns standardized error envelope on POST comment async failure", async () => {
+		(
+			prismaMock.task.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 1,
+			familyId: 10,
+		});
+
+		// Force an async error in create
+		(
+			prismaMock.comment.create as unknown as ReturnType<typeof vi.fn>
+		).mockRejectedValue(new Error("Network timeout"));
+
+		const app = buildApp();
+
+		const response = await request(app).post("/api/v1/comments").send({
+			taskId: 1,
+			text: "New comment",
+		});
+
+		expect(response.status).toBe(500);
+		expect(response.body.error).toBeDefined();
+		expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+		// Verify internal error message is not exposed
+		expect(response.body.error.message).toBe("Internal server error");
 	});
 });

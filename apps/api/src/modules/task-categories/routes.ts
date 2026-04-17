@@ -13,6 +13,7 @@ import {
 	requireRole,
 } from "../../middleware/auth";
 import { prisma } from "../../shared/db/client";
+import { asyncHandler } from "../../shared/http/error-handler";
 import { sendData, sendError, sendList } from "../../shared/http/responses";
 
 const router = Router();
@@ -35,20 +36,23 @@ const idParamSchema = z.object({
 
 router.use(authenticate);
 
-router.get("/", async (_req: AuthenticatedRequest, res) => {
-	const categories = await prisma.taskCategory.findMany({
-		orderBy: { id: "asc" },
-	});
+router.get(
+	"/",
+	asyncHandler(async (_req: AuthenticatedRequest, res) => {
+		const categories = await prisma.taskCategory.findMany({
+			orderBy: { id: "asc" },
+		});
 
-	const dtos = categories.map(toTaskCategoryDto);
+		const dtos = categories.map(toTaskCategoryDto);
 
-	sendList(res, 200, dtos);
-});
+		sendList(res, 200, dtos);
+	}),
+);
 
 router.post(
 	"/",
 	requireRole([UserRole.PARENT]),
-	async (req: AuthenticatedRequest, res) => {
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
 		const parsed = createTaskCategorySchema.safeParse(req.body);
 
 		if (!parsed.success) {
@@ -64,34 +68,23 @@ router.post(
 
 		const { name, color } = parsed.data;
 
-		try {
-			const created = await prisma.taskCategory.create({
-				data: {
-					name,
-					color: color ?? null,
-				},
-			});
+		const created = await prisma.taskCategory.create({
+			data: {
+				name,
+				color: color ?? null,
+			},
+		});
 
-			const dto = toTaskCategoryDto(created);
+		const dto = toTaskCategoryDto(created);
 
-			sendData(res, 201, dto);
-		} catch (error) {
-			// eslint-disable-next-line no-console
-			console.error("task_category_create_failed", error);
-			sendError(
-				res,
-				500,
-				"INTERNAL_SERVER_ERROR",
-				"Failed to create task category",
-			);
-		}
-	},
+		sendData(res, 201, dto);
+	}),
 );
 
 router.patch(
 	"/:id",
 	requireRole([UserRole.PARENT]),
-	async (req: AuthenticatedRequest, res) => {
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
 		const paramsResult = idParamSchema.safeParse(req.params);
 
 		if (!paramsResult.success) {
@@ -142,13 +135,13 @@ router.patch(
 		const dto = toTaskCategoryDto(updated);
 
 		sendData(res, 200, dto);
-	},
+	}),
 );
 
 router.delete(
 	"/:id",
 	requireRole([UserRole.PARENT]),
-	async (req: AuthenticatedRequest, res) => {
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
 		const paramsResult = idParamSchema.safeParse(req.params);
 
 		if (!paramsResult.success) {
@@ -176,7 +169,7 @@ router.delete(
 		await prisma.taskCategory.delete({ where: { id } });
 
 		res.status(204).send();
-	},
+	}),
 );
 
 export default router;

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { EventCategory } from "@family-manager/shared";
 import type { AuthenticatedRequest } from "../../middleware/auth";
+import { apiErrorHandler } from "../../shared/http/error-handler";
 import eventCategoriesRouter from "./routes";
 
 vi.mock("../../middleware/auth", () => {
@@ -51,6 +52,7 @@ const buildApp = () => {
 	app.use(express.json());
 	app.use(cookieParser());
 	app.use("/api/v1/event-categories", eventCategoriesRouter);
+	app.use(apiErrorHandler);
 	return app;
 };
 

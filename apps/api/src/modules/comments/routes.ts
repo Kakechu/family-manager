@@ -8,6 +8,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { type AuthenticatedRequest, authenticate } from "../../middleware/auth";
 import { prisma } from "../../shared/db/client";
+import { asyncHandler } from "../../shared/http/error-handler";
 import { sendData, sendError, sendList } from "../../shared/http/responses";
 
 const router = Router();
@@ -46,149 +47,155 @@ const toCommentDto = (comment: {
 
 router.use(authenticate);
 
-router.get("/", async (req: AuthenticatedRequest, res) => {
-	if (!req.auth) {
-		sendError(res, 401, "UNAUTHORIZED", "Authentication required");
-		return;
-	}
+router.get(
+	"/",
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
+		}
 
-	const parsedQuery = querySchema.safeParse(req.query);
+		const parsedQuery = querySchema.safeParse(req.query);
 
-	if (!parsedQuery.success) {
-		sendError(
-			res,
-			400,
-			"VALIDATION_ERROR",
-			"Invalid query parameters",
-			parsedQuery.error.flatten(),
-		);
-		return;
-	}
+		if (!parsedQuery.success) {
+			sendError(
+				res,
+				400,
+				"VALIDATION_ERROR",
+				"Invalid query parameters",
+				parsedQuery.error.flatten(),
+			);
+			return;
+		}
 
-	const { taskId } = parsedQuery.data;
+		const { taskId } = parsedQuery.data;
 
-	const task = await prisma.task.findFirst({
-		where: {
-			id: taskId,
-			familyId: req.auth.familyId,
-		},
-	});
-
-	if (!task) {
-		sendError(res, 404, "TASK_NOT_FOUND", "Task not found");
-		return;
-	}
-
-	const comments = await prisma.comment.findMany({
-		where: { taskId },
-		orderBy: { createdAt: "asc" },
-		include: {
-			user: {
-				include: {
-					familyMember: true,
-				},
-			},
-		},
-	});
-
-	const dtos = comments.map(toCommentDto);
-
-	sendList(res, 200, dtos);
-});
-
-router.post("/", async (req: AuthenticatedRequest, res) => {
-	if (!req.auth) {
-		sendError(res, 401, "UNAUTHORIZED", "Authentication required");
-		return;
-	}
-
-	const parsed = createCommentSchema.safeParse(req.body);
-
-	if (!parsed.success) {
-		sendError(
-			res,
-			400,
-			"VALIDATION_ERROR",
-			"Invalid comment data",
-			parsed.error.flatten(),
-		);
-		return;
-	}
-
-	const { taskId, text } = parsed.data;
-
-	const task = await prisma.task.findFirst({
-		where: {
-			id: taskId,
-			familyId: req.auth.familyId,
-		},
-	});
-
-	if (!task) {
-		sendError(res, 404, "TASK_NOT_FOUND", "Task not found");
-		return;
-	}
-
-	if (req.auth.role !== UserRole.PARENT) {
-		const familyMember = await prisma.familyMember.findFirst({
+		const task = await prisma.task.findFirst({
 			where: {
-				userId: req.auth.userId,
+				id: taskId,
 				familyId: req.auth.familyId,
 			},
-			select: {
-				id: true,
-			},
 		});
 
-		if (!familyMember) {
-			sendError(
-				res,
-				403,
-				"FORBIDDEN",
-				"Only parents or task assignees can comment on this task",
-			);
+		if (!task) {
+			sendError(res, 404, "TASK_NOT_FOUND", "Task not found");
 			return;
 		}
 
-		const assignment = await prisma.taskAssignment.findFirst({
-			where: {
-				taskId,
-				familyMemberId: familyMember.id,
-			},
-			select: {
-				taskId: true,
-			},
-		});
-
-		if (!assignment) {
-			sendError(
-				res,
-				403,
-				"FORBIDDEN",
-				"Only parents or task assignees can comment on this task",
-			);
-			return;
-		}
-	}
-
-	const created = await prisma.comment.create({
-		data: {
-			text,
-			taskId,
-			userId: req.auth.userId,
-		},
-		include: {
-			user: {
-				include: {
-					familyMember: true,
+		const comments = await prisma.comment.findMany({
+			where: { taskId },
+			orderBy: { createdAt: "asc" },
+			include: {
+				user: {
+					include: {
+						familyMember: true,
+					},
 				},
 			},
-		},
-	});
+		});
 
-	const dto = toCommentDto(created);
+		const dtos = comments.map(toCommentDto);
 
-	sendData(res, 201, dto);
-});
+		sendList(res, 200, dtos);
+	}),
+);
+
+router.post(
+	"/",
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
+		}
+
+		const parsed = createCommentSchema.safeParse(req.body);
+
+		if (!parsed.success) {
+			sendError(
+				res,
+				400,
+				"VALIDATION_ERROR",
+				"Invalid comment data",
+				parsed.error.flatten(),
+			);
+			return;
+		}
+
+		const { taskId, text } = parsed.data;
+
+		const task = await prisma.task.findFirst({
+			where: {
+				id: taskId,
+				familyId: req.auth.familyId,
+			},
+		});
+
+		if (!task) {
+			sendError(res, 404, "TASK_NOT_FOUND", "Task not found");
+			return;
+		}
+
+		if (req.auth.role !== UserRole.PARENT) {
+			const familyMember = await prisma.familyMember.findFirst({
+				where: {
+					userId: req.auth.userId,
+					familyId: req.auth.familyId,
+				},
+				select: {
+					id: true,
+				},
+			});
+
+			if (!familyMember) {
+				sendError(
+					res,
+					403,
+					"FORBIDDEN",
+					"Only parents or task assignees can comment on this task",
+				);
+				return;
+			}
+
+			const assignment = await prisma.taskAssignment.findFirst({
+				where: {
+					taskId,
+					familyMemberId: familyMember.id,
+				},
+				select: {
+					taskId: true,
+				},
+			});
+
+			if (!assignment) {
+				sendError(
+					res,
+					403,
+					"FORBIDDEN",
+					"Only parents or task assignees can comment on this task",
+				);
+				return;
+			}
+		}
+
+		const created = await prisma.comment.create({
+			data: {
+				text,
+				taskId,
+				userId: req.auth.userId,
+			},
+			include: {
+				user: {
+					include: {
+						familyMember: true,
+					},
+				},
+			},
+		});
+
+		const dto = toCommentDto(created);
+
+		sendData(res, 201, dto);
+	}),
+);
 
 export default router;

@@ -13,6 +13,7 @@ import {
 	requireRole,
 } from "../../middleware/auth";
 import { prisma } from "../../shared/db/client";
+import { asyncHandler } from "../../shared/http/error-handler";
 import { sendData, sendError, sendList } from "../../shared/http/responses";
 
 const router = Router();
@@ -40,53 +41,56 @@ const toEventAssignmentDto = (assignment: {
 
 router.use(authenticate);
 
-router.get("/", async (req: AuthenticatedRequest, res) => {
-	if (!req.auth) {
-		sendError(res, 401, "UNAUTHORIZED", "Authentication required");
-		return;
-	}
+router.get(
+	"/",
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
+		if (!req.auth) {
+			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
+			return;
+		}
 
-	const parsedQuery = querySchema.safeParse(req.query);
+		const parsedQuery = querySchema.safeParse(req.query);
 
-	if (!parsedQuery.success) {
-		sendError(
-			res,
-			400,
-			"VALIDATION_ERROR",
-			"Invalid query parameters",
-			parsedQuery.error.flatten(),
-		);
-		return;
-	}
+		if (!parsedQuery.success) {
+			sendError(
+				res,
+				400,
+				"VALIDATION_ERROR",
+				"Invalid query parameters",
+				parsedQuery.error.flatten(),
+			);
+			return;
+		}
 
-	const { eventId } = parsedQuery.data;
+		const { eventId } = parsedQuery.data;
 
-	const event = await prisma.event.findFirst({
-		where: {
-			id: eventId,
-			familyId: req.auth.familyId,
-		},
-	});
+		const event = await prisma.event.findFirst({
+			where: {
+				id: eventId,
+				familyId: req.auth.familyId,
+			},
+		});
 
-	if (!event) {
-		sendError(res, 404, "EVENT_NOT_FOUND", "Event not found");
-		return;
-	}
+		if (!event) {
+			sendError(res, 404, "EVENT_NOT_FOUND", "Event not found");
+			return;
+		}
 
-	const assignments = await prisma.eventAssignment.findMany({
-		where: { eventId },
-		orderBy: { familyMemberId: "asc" },
-	});
+		const assignments = await prisma.eventAssignment.findMany({
+			where: { eventId },
+			orderBy: { familyMemberId: "asc" },
+		});
 
-	const dtos = assignments.map(toEventAssignmentDto);
+		const dtos = assignments.map(toEventAssignmentDto);
 
-	sendList(res, 200, dtos);
-});
+		sendList(res, 200, dtos);
+	}),
+);
 
 router.post(
 	"/",
 	requireRole([UserRole.PARENT]),
-	async (req: AuthenticatedRequest, res) => {
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
 		if (!req.auth) {
 			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
 			return;
@@ -160,13 +164,13 @@ router.post(
 		const dtos = created.map(toEventAssignmentDto);
 
 		sendList(res, 201, dtos);
-	},
+	}),
 );
 
 router.patch(
 	"/:eventId/:familyMemberId",
 	requireRole([UserRole.PARENT]),
-	async (req: AuthenticatedRequest, res) => {
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
 		if (!req.auth) {
 			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
 			return;
@@ -247,13 +251,13 @@ router.patch(
 		const dto = toEventAssignmentDto(updated);
 
 		sendData(res, 200, dto);
-	},
+	}),
 );
 
 router.delete(
 	"/:eventId/:familyMemberId",
 	requireRole([UserRole.PARENT]),
-	async (req: AuthenticatedRequest, res) => {
+	asyncHandler(async (req: AuthenticatedRequest, res) => {
 		if (!req.auth) {
 			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
 			return;
@@ -315,7 +319,7 @@ router.delete(
 		});
 
 		res.status(204).send();
-	},
+	}),
 );
 
 export default router;
