@@ -38,7 +38,7 @@ describe("createTaskDeadlineNotification", () => {
 				type: "TASK_REMINDER",
 				userId: 10,
 				taskId: 20,
-					reminderKey: "task:20:user:10:slot:2026-04-14T10:00:00.000Z",
+				reminderKey: "task:20:user:10:slot:2026-04-14T10:00:00.000Z",
 			},
 		});
 

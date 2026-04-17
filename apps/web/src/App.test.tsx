@@ -186,8 +186,10 @@ describe("App", () => {
 			expect(runReminderScheduler).toHaveBeenCalled();
 		});
 
-		const schedulerCallsBeforeRefresh = vi.mocked(runReminderScheduler).mock.calls.length;
-		const notificationCallsBeforeRefresh = vi.mocked(listNotifications).mock.calls.length;
+		const schedulerCallsBeforeRefresh =
+			vi.mocked(runReminderScheduler).mock.calls.length;
+		const notificationCallsBeforeRefresh =
+			vi.mocked(listNotifications).mock.calls.length;
 
 		fireEvent.click(screen.getByRole("button", { name: /Refresh/i }));
 

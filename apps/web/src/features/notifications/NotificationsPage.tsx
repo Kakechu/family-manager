@@ -92,11 +92,7 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({
 						</Typography>
 					</Box>
 					<Box display="flex" gap={1}>
-						<Button
-							variant="outlined"
-							onClick={onRefresh}
-							disabled={loading}
-						>
+						<Button variant="outlined" onClick={onRefresh} disabled={loading}>
 							Refresh
 						</Button>
 						<Button

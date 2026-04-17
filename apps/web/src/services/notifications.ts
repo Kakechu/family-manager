@@ -47,12 +47,13 @@ export const markAllNotificationsRead = async (): Promise<void> => {
 	await apiClient.post("/notifications/mark-all-read");
 };
 
-export const runReminderScheduler = async (): Promise<RunReminderSchedulerResponse> => {
-	const response = await apiClient.post<RunReminderSchedulerResponse>(
-		"/notifications/reminders/run",
-	);
-	return response.data;
-};
+export const runReminderScheduler =
+	async (): Promise<RunReminderSchedulerResponse> => {
+		const response = await apiClient.post<RunReminderSchedulerResponse>(
+			"/notifications/reminders/run",
+		);
+		return response.data;
+	};
 
 export const isMissingEndpointError = (error: unknown): boolean => {
 	return axios.isAxiosError(error) && error.response?.status === 404;

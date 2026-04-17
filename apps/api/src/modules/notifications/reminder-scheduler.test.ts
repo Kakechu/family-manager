@@ -430,9 +430,7 @@ describe("runFamilyReminderScheduler", () => {
 			prismaMock.user.findMany as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue([]);
 
-		(
-			createTaskDeadlineNotification as unknown as ReturnType<typeof vi.fn>
-		)
+		(createTaskDeadlineNotification as unknown as ReturnType<typeof vi.fn>)
 			.mockResolvedValueOnce({ id: 1 })
 			.mockResolvedValueOnce(null);
 
@@ -488,9 +486,7 @@ describe("runFamilyReminderScheduler", () => {
 			prismaMock.user.findMany as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue([]);
 
-		(
-			createEventReminderNotification as unknown as ReturnType<typeof vi.fn>
-		)
+		(createEventReminderNotification as unknown as ReturnType<typeof vi.fn>)
 			.mockResolvedValueOnce({ id: 1 })
 			.mockResolvedValueOnce(null);
 
