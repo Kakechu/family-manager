@@ -35,7 +35,7 @@ const prismaMock = vi.hoisted(() => ({
 	eventCategory: {
 		findMany: vi.fn(),
 		create: vi.fn(),
-		findUnique: vi.fn(),
+		findFirst: vi.fn(),
 		update: vi.fn(),
 		delete: vi.fn(),
 	},
@@ -77,6 +77,10 @@ describe("event categories routes", () => {
 		const response = await request(app).get("/api/v1/event-categories");
 
 		expect(response.status).toBe(200);
+		expect(prismaMock.eventCategory.findMany).toHaveBeenCalledWith({
+			where: { familyId: 10 },
+			orderBy: { id: "asc" },
+		});
 		const body = response.body as { data: EventCategory[] };
 		expect(body.data).toHaveLength(1);
 		expect(body.data[0].name).toBe("School");
@@ -98,9 +102,97 @@ describe("event categories routes", () => {
 		});
 
 		expect(response.status).toBe(201);
+		expect(prismaMock.eventCategory.create).toHaveBeenCalledWith({
+			data: {
+				name: "Hobby",
+				color: null,
+				familyId: 10,
+			},
+		});
 		const body = response.body as { data: EventCategory };
 		expect(body.data.id).toBe(2);
 		expect(body.data.name).toBe("Hobby");
+	});
+
+	it("returns not found for cross-family update attempts", async () => {
+		(
+			prismaMock.eventCategory.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue(null);
+
+		const app = buildApp();
+
+		const response = await request(app)
+			.patch("/api/v1/event-categories/44")
+			.send({ name: "Updated" });
+
+		expect(response.status).toBe(404);
+		expect(response.body.error.code).toBe("EVENT_CATEGORY_NOT_FOUND");
+		expect(prismaMock.eventCategory.findFirst).toHaveBeenCalledWith({
+			where: {
+				id: 44,
+				familyId: 10,
+			},
+		});
+		expect(prismaMock.eventCategory.update).not.toHaveBeenCalled();
+	});
+
+	it("updates an event category within the same family", async () => {
+		(
+			prismaMock.eventCategory.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({ id: 12, name: "School", color: "#ff0000" });
+		(
+			prismaMock.eventCategory.update as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({ id: 12, name: "School", color: "#00ff00" });
+
+		const app = buildApp();
+
+		const response = await request(app)
+			.patch("/api/v1/event-categories/12")
+			.send({ color: "#00ff00" });
+
+		expect(response.status).toBe(200);
+		expect(prismaMock.eventCategory.update).toHaveBeenCalledWith({
+			where: { id: 12 },
+			data: { color: "#00ff00" },
+		});
+		expect((response.body as { data: EventCategory }).data.color).toBe(
+			"#00ff00",
+		);
+	});
+
+	it("returns not found for cross-family delete attempts", async () => {
+		(
+			prismaMock.eventCategory.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue(null);
+
+		const app = buildApp();
+
+		const response = await request(app).delete("/api/v1/event-categories/44");
+
+		expect(response.status).toBe(404);
+		expect(response.body.error.code).toBe("EVENT_CATEGORY_NOT_FOUND");
+		expect(prismaMock.eventCategory.findFirst).toHaveBeenCalledWith({
+			where: {
+				id: 44,
+				familyId: 10,
+			},
+		});
+		expect(prismaMock.eventCategory.delete).not.toHaveBeenCalled();
+	});
+
+	it("deletes an event category within the same family", async () => {
+		(
+			prismaMock.eventCategory.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({ id: 15, name: "Doctor", color: null });
+
+		const app = buildApp();
+
+		const response = await request(app).delete("/api/v1/event-categories/15");
+
+		expect(response.status).toBe(204);
+		expect(prismaMock.eventCategory.delete).toHaveBeenCalledWith({
+			where: { id: 15 },
+		});
 	});
 
 	it("returns sanitized 500 response when category creation fails", async () => {

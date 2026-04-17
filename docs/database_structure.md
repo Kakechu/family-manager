@@ -42,6 +42,7 @@
 - `id` (PK)  
 - `name` (e.g., School, Hobby, Doctor)  
 - `color` (optional)  
+- `familyId` (FK -> Family)
 
 ---
 
@@ -62,6 +63,7 @@
 - `id` (PK)  
 - `name` (e.g., Chore, Homework, Errand)  
 - `color` (optional)  
+- `familyId` (FK -> Family)
 
 ---
 

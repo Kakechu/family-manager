@@ -44,10 +44,12 @@ model Family {
   id   Int    @id @default(autoincrement())
   name String
 
-  users   User[]
-  members FamilyMember[]
-  events  Event[]
-  tasks   Task[]
+  users           User[]
+  members         FamilyMember[]
+  eventCategories EventCategory[]
+  taskCategories  TaskCategory[]
+  events          Event[]
+  tasks           Task[]
 }
 
 model User {
@@ -89,6 +91,9 @@ model EventCategory {
   name  String
   color String?
 
+  familyId Int
+  family   Family @relation(fields: [familyId], references: [id])
+
   events Event[]
 }
 
@@ -96,6 +101,9 @@ model TaskCategory {
   id    Int    @id @default(autoincrement())
   name  String
   color String?
+
+  familyId Int
+  family   Family @relation(fields: [familyId], references: [id])
 
   tasks Task[]
 }
