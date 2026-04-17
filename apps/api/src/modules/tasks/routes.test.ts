@@ -46,6 +46,7 @@ const prismaMock = vi.hoisted(() => ({
 		create: vi.fn(),
 		update: vi.fn(),
 		delete: vi.fn(),
+		count: vi.fn(),
 	},
 	taskCategory: {
 		findFirst: vi.fn(),
@@ -74,6 +75,9 @@ describe("tasks routes", () => {
 
 	it("lists tasks filtered by family member and completion", async () => {
 		(
+			prismaMock.task.count as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue(3);
+		(
 			prismaMock.task.findMany as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue([
 			{
@@ -94,11 +98,20 @@ describe("tasks routes", () => {
 
 		const response = await request(app)
 			.get("/api/v1/tasks")
-			.query({ familyMemberId: 100, isCompleted: true });
+			.query({ familyMemberId: 100, isCompleted: true, page: 2, pageSize: 1 });
 
 		expect(response.status).toBe(200);
-		const body = response.body as { data: Task[] };
+		const body = response.body as {
+			data: Task[];
+			meta: { page: number; pageSize: number; totalItems: number; totalPages: number };
+		};
 		expect(body.data).toHaveLength(1);
+		expect(body.meta).toEqual({
+			page: 2,
+			pageSize: 1,
+			totalItems: 3,
+			totalPages: 3,
+		});
 
 		expect(prismaMock.task.findMany).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -107,6 +120,8 @@ describe("tasks routes", () => {
 					assignments: { some: { familyMemberId: 100 } },
 				}),
 				orderBy: [{ dueDate: "asc" }, { id: "asc" }],
+				skip: 1,
+				take: 1,
 			}),
 		);
 	});

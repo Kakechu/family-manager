@@ -37,6 +37,7 @@ const prismaMock = vi.hoisted(() => ({
 		findFirst: vi.fn(),
 		update: vi.fn(),
 		delete: vi.fn(),
+		count: vi.fn(),
 	},
 }));
 
@@ -62,6 +63,9 @@ describe("task categories routes", () => {
 
 	it("lists task categories", async () => {
 		(
+			prismaMock.taskCategory.count as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue(1);
+		(
 			prismaMock.taskCategory.findMany as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue([
 			{
@@ -79,9 +83,20 @@ describe("task categories routes", () => {
 		expect(prismaMock.taskCategory.findMany).toHaveBeenCalledWith({
 			where: { familyId: 10 },
 			orderBy: { id: "asc" },
+			skip: 0,
+			take: 20,
 		});
-		const body = response.body as { data: TaskCategory[] };
+		const body = response.body as {
+			data: TaskCategory[];
+			meta: { page: number; pageSize: number; totalItems: number; totalPages: number };
+		};
 		expect(body.data).toHaveLength(1);
+		expect(body.meta).toEqual({
+			page: 1,
+			pageSize: 20,
+			totalItems: 1,
+			totalPages: 1,
+		});
 		expect(body.data[0].name).toBe("Home");
 	});
 

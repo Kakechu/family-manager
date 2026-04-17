@@ -41,6 +41,7 @@ const prismaMock = vi.hoisted(() => ({
 		upsert: vi.fn(),
 		update: vi.fn(),
 		delete: vi.fn(),
+		count: vi.fn(),
 	},
 	familyMember: {
 		findMany: vi.fn(),
@@ -77,6 +78,9 @@ describe("event assignments routes", () => {
 		});
 
 		(
+			prismaMock.eventAssignment.count as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue(1);
+		(
 			prismaMock.eventAssignment.findMany as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue([
 			{
@@ -93,8 +97,17 @@ describe("event assignments routes", () => {
 			.query({ eventId: 1 });
 
 		expect(response.status).toBe(200);
-		const body = response.body as { data: EventAssignment[] };
+		const body = response.body as {
+			data: EventAssignment[];
+			meta: { page: number; pageSize: number; totalItems: number; totalPages: number };
+		};
 		expect(body.data).toHaveLength(1);
+		expect(body.meta).toEqual({
+			page: 1,
+			pageSize: 20,
+			totalItems: 1,
+			totalPages: 1,
+		});
 		expect(body.data[0].eventId).toBe(1);
 	});
 

@@ -3,6 +3,7 @@ import {
 	createFamilyMemberSchema,
 	familyMemberRoleSchema,
 	familyMemberSchema,
+	paginationQuerySchema,
 	updateFamilyMemberSchema,
 } from "@family-manager/shared";
 import { type FamilyMemberRole, UserRole } from "@prisma/client";
@@ -15,11 +16,12 @@ import {
 } from "../../middleware/auth";
 import { prisma } from "../../shared/db/client";
 import { asyncHandler } from "../../shared/http/error-handler";
+import { buildPaginationMeta, getPaginationArgs } from "../../shared/http/pagination";
 import { sendData, sendError, sendList } from "../../shared/http/responses";
 
 const router = Router();
 
-const querySchema = z.object({
+const querySchema = paginationQuerySchema.extend({
 	role: familyMemberRoleSchema.optional(),
 });
 
@@ -97,19 +99,28 @@ router.get(
 			return;
 		}
 
-		const { role } = parsedQuery.data;
+		const { page, pageSize, role } = parsedQuery.data;
 
+		const where = {
+			familyId: req.auth.familyId,
+			...(role ? { role } : {}),
+		};
+
+		const totalItems = await prisma.familyMember.count({ where });
 		const members = await prisma.familyMember.findMany({
-			where: {
-				familyId: req.auth.familyId,
-				...(role ? { role } : {}),
-			},
+			where,
 			orderBy: { id: "asc" },
+			...getPaginationArgs({ page, pageSize }),
 		});
 
 		const dtos = members.map(toFamilyMemberDto);
 
-		sendList(res, 200, dtos);
+		sendList(
+			res,
+			200,
+			dtos,
+			buildPaginationMeta({ page, pageSize, totalItems }),
+		);
 	}),
 );
 

@@ -1,3 +1,4 @@
+import type { PaginationMeta } from "@family-manager/shared";
 import type { Response } from "express";
 
 export interface ErrorBody {
@@ -8,9 +9,7 @@ export interface ErrorBody {
 	};
 }
 
-export interface ListMeta {
-	total?: number;
-}
+export type ListMeta = PaginationMeta;
 
 export interface ListResponse<T> {
 	data: T[];

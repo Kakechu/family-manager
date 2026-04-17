@@ -40,6 +40,7 @@ const prismaMock = vi.hoisted(() => ({
 		findUnique: vi.fn(),
 		upsert: vi.fn(),
 		delete: vi.fn(),
+		count: vi.fn(),
 	},
 	familyMember: {
 		findMany: vi.fn(),
@@ -76,6 +77,9 @@ describe("task assignments routes", () => {
 		});
 
 		(
+			prismaMock.taskAssignment.count as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue(1);
+		(
 			prismaMock.taskAssignment.findMany as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue([{ taskId: 1, familyMemberId: 100 }]);
 
@@ -86,8 +90,17 @@ describe("task assignments routes", () => {
 			.query({ taskId: 1 });
 
 		expect(response.status).toBe(200);
-		const body = response.body as { data: TaskAssignment[] };
+		const body = response.body as {
+			data: TaskAssignment[];
+			meta: { page: number; pageSize: number; totalItems: number; totalPages: number };
+		};
 		expect(body.data).toHaveLength(1);
+		expect(body.meta).toEqual({
+			page: 1,
+			pageSize: 20,
+			totalItems: 1,
+			totalPages: 1,
+		});
 		expect(body.data[0].taskId).toBe(1);
 		expect(body.data[0].familyMemberId).toBe(100);
 	});

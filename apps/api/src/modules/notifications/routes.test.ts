@@ -47,6 +47,7 @@ const prismaMock = vi.hoisted(() => ({
 		findFirst: vi.fn(),
 		update: vi.fn(),
 		updateMany: vi.fn(),
+		count: vi.fn(),
 	},
 }));
 
@@ -129,6 +130,9 @@ describe("notifications routes - inbox and read state", () => {
 
 	it("lists notifications for the authenticated user in descending order", async () => {
 		(
+			prismaMock.notification.count as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue(2);
+		(
 			prismaMock.notification.findMany as unknown as ReturnType<typeof vi.fn>
 		).mockResolvedValue([
 			{
@@ -158,8 +162,17 @@ describe("notifications routes - inbox and read state", () => {
 		const response = await request(app).get("/api/v1/notifications");
 
 		expect(response.status).toBe(200);
-		const body = response.body as { data: Notification[] };
+		const body = response.body as {
+			data: Notification[];
+			meta: { page: number; pageSize: number; totalItems: number; totalPages: number };
+		};
 		expect(body.data).toHaveLength(2);
+		expect(body.meta).toEqual({
+			page: 1,
+			pageSize: 20,
+			totalItems: 2,
+			totalPages: 1,
+		});
 		expect(body.data[0].id).toBe(2);
 		expect(body.data[1].id).toBe(1);
 		expect(prismaMock.notification.findMany).toHaveBeenCalledWith(

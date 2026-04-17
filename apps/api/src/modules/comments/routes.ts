@@ -2,6 +2,7 @@ import {
 	type Comment,
 	commentSchema,
 	createCommentSchema,
+	paginationQuerySchema,
 } from "@family-manager/shared";
 import { UserRole } from "@prisma/client";
 import { Router } from "express";
@@ -9,11 +10,12 @@ import { z } from "zod";
 import { type AuthenticatedRequest, authenticate } from "../../middleware/auth";
 import { prisma } from "../../shared/db/client";
 import { asyncHandler } from "../../shared/http/error-handler";
+import { buildPaginationMeta, getPaginationArgs } from "../../shared/http/pagination";
 import { sendData, sendError, sendList } from "../../shared/http/responses";
 
 const router = Router();
 
-const querySchema = z.object({
+const querySchema = paginationQuerySchema.extend({
 	taskId: z.coerce.number().int().positive(),
 });
 
@@ -68,7 +70,7 @@ router.get(
 			return;
 		}
 
-		const { taskId } = parsedQuery.data;
+		const { page, pageSize, taskId } = parsedQuery.data;
 
 		const task = await prisma.task.findFirst({
 			where: {
@@ -82,8 +84,10 @@ router.get(
 			return;
 		}
 
+		const where = { taskId };
+		const totalItems = await prisma.comment.count({ where });
 		const comments = await prisma.comment.findMany({
-			where: { taskId },
+			where,
 			orderBy: { createdAt: "asc" },
 			include: {
 				user: {
@@ -92,11 +96,17 @@ router.get(
 					},
 				},
 			},
+			...getPaginationArgs({ page, pageSize }),
 		});
 
 		const dtos = comments.map(toCommentDto);
 
-		sendList(res, 200, dtos);
+		sendList(
+			res,
+			200,
+			dtos,
+			buildPaginationMeta({ page, pageSize, totalItems }),
+		);
 	}),
 );
 
