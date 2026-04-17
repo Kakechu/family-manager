@@ -125,6 +125,26 @@ describe("events routes", () => {
 		expect(body.data.familyId).toBe(10);
 	});
 
+	it("returns sanitized 500 response when event creation fails", async () => {
+		(
+			prismaMock.event.create as unknown as ReturnType<typeof vi.fn>
+		).mockRejectedValue(new Error("db exploded"));
+
+		const app = buildApp();
+
+		const response = await request(app).post("/api/v1/events").send({
+			title: "School meeting",
+			startTime: "2026-04-16T08:00:00.000Z",
+			endTime: "2026-04-16T09:00:00.000Z",
+			categoryId: 1,
+		});
+
+		expect(response.status).toBe(500);
+		expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+		expect(response.body.error.message).toBe("Internal server error");
+		expect(response.body.error.details).toBeUndefined();
+	});
+
 	it("applies family member filtering with includeUnassigned flag", async () => {
 		(
 			prismaMock.event.findMany as unknown as ReturnType<typeof vi.fn>
@@ -181,5 +201,35 @@ describe("events routes", () => {
 		expect(response.status).toBe(403);
 		expect(response.body.error.code).toBe("FORBIDDEN");
 		expect(prismaMock.event.create).not.toHaveBeenCalled();
+	});
+
+	it("returns sanitized 500 response when event update fails", async () => {
+		(
+			prismaMock.event.findFirst as unknown as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			id: 2,
+			title: "School meeting",
+			description: null,
+			startTime: new Date("2026-04-16T08:00:00Z"),
+			endTime: new Date("2026-04-16T09:00:00Z"),
+			categoryId: 1,
+			createdBy: 1,
+			familyId: 10,
+		});
+
+		(
+			prismaMock.event.update as unknown as ReturnType<typeof vi.fn>
+		).mockRejectedValue(new Error("db exploded"));
+
+		const app = buildApp();
+
+		const response = await request(app)
+			.patch("/api/v1/events/2")
+			.send({ title: "Updated meeting" });
+
+		expect(response.status).toBe(500);
+		expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+		expect(response.body.error.message).toBe("Internal server error");
+		expect(response.body.error.details).toBeUndefined();
 	});
 });

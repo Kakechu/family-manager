@@ -13,6 +13,7 @@ import {
 	requireRole,
 } from "../../middleware/auth";
 import { prisma } from "../../shared/db/client";
+import { apiErrorHandler, asyncHandler } from "../../shared/http/error-handler";
 import { sendData, sendError, sendList } from "../../shared/http/responses";
 
 const router = Router();
@@ -51,7 +52,7 @@ const toTaskDto = (task: {
 
 router.use(authenticate);
 
-router.get("/", async (req: AuthenticatedRequest, res) => {
+router.get("/", asyncHandler(async (req: AuthenticatedRequest, res) => {
 	if (!req.auth) {
 		sendError(res, 401, "UNAUTHORIZED", "Authentication required");
 		return;
@@ -90,9 +91,9 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
 	const dtos = tasks.map(toTaskDto);
 
 	sendList(res, 200, dtos);
-});
+}));
 
-router.get("/:id", async (req: AuthenticatedRequest, res) => {
+router.get("/:id", asyncHandler(async (req: AuthenticatedRequest, res) => {
 	if (!req.auth) {
 		sendError(res, 401, "UNAUTHORIZED", "Authentication required");
 		return;
@@ -120,12 +121,12 @@ router.get("/:id", async (req: AuthenticatedRequest, res) => {
 	const dto = toTaskDto(task);
 
 	sendData(res, 200, dto);
-});
+}));
 
 router.post(
 	"/",
 	requireRole([UserRole.PARENT]),
-	async (req: AuthenticatedRequest, res) => {
+		asyncHandler(async (req: AuthenticatedRequest, res) => {
 		if (!req.auth) {
 			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
 			return;
@@ -174,13 +175,13 @@ router.post(
 		const dto = toTaskDto(created);
 
 		sendData(res, 201, dto);
-	},
+	}),
 );
 
 router.patch(
 	"/:id",
 	requireRole([UserRole.PARENT]),
-	async (req: AuthenticatedRequest, res) => {
+		asyncHandler(async (req: AuthenticatedRequest, res) => {
 		if (!req.auth) {
 			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
 			return;
@@ -257,13 +258,13 @@ router.patch(
 		const dto = toTaskDto(updated);
 
 		sendData(res, 200, dto);
-	},
+	}),
 );
 
 router.delete(
 	"/:id",
 	requireRole([UserRole.PARENT]),
-	async (req: AuthenticatedRequest, res) => {
+		asyncHandler(async (req: AuthenticatedRequest, res) => {
 		if (!req.auth) {
 			sendError(res, 401, "UNAUTHORIZED", "Authentication required");
 			return;
@@ -291,7 +292,9 @@ router.delete(
 		await prisma.task.delete({ where: { id } });
 
 		res.status(204).send();
-	},
+	}),
 );
+
+router.use(apiErrorHandler);
 
 export default router;
