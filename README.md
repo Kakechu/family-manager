@@ -71,3 +71,66 @@ The repo includes supporting documents for the product and implementation plan:
 ## Current Focus
 
 The repository is structured to support family-scoped data, secure authentication, modular backend code, and a responsive UI that works on both desktop and mobile browsers. The remaining implementation work should continue to follow the issue-based process so requirements, code, and validation stay aligned.
+
+
+## Getting Started: Prerequisites & Setup
+
+To run FamilyManager locally, follow these steps:
+
+### Prerequisites
+
+- **Node.js** (v18 or later recommended)
+- **npm** (comes with Node.js)
+- **PostgreSQL** (v14 or later recommended)
+- **Git**
+
+### 1. Clone the Repository
+
+```sh
+git clone https://github.com/Kakechu/family-manager.git
+cd family-manager
+```
+
+### 2. Install Dependencies
+
+```sh
+npm install
+```
+This will install dependencies for all packages using the root workspace configuration.
+
+### 3. Configure Environment Variables
+
+- Copy the example environment files (if present) or create your own `.env` files for the backend and frontend as needed.
+- For the backend (`apps/api`), set up a `.env` file with your PostgreSQL connection string:
+	```env
+	DATABASE_URL="postgresql://<user>:<password>@localhost:5432/<database>"
+	JWT_SECRET="your_jwt_secret"
+	# Add other required variables as needed
+	```
+- For the frontend (`apps/web`), environment variables are usually not required for local development, but check for any `.env.example` files.
+
+### 4. Set Up the Database
+
+Run the following command to apply Prisma migrations and seed the database:
+
+```sh
+npm run db:reset
+```
+This will reset the database, apply all migrations, and run the seed script.
+
+### 5. Start the Development Servers
+
+In separate terminals, run:
+
+```sh
+npm run dev:api   # Start backend API (http://localhost:4000)
+npm run dev:web   # Start frontend (http://localhost:5173)
+```
+
+### 6. Access the Application
+
+- Open your browser to [http://localhost:5173](http://localhost:5173) to use the FamilyManager web app.
+
+---
+
+For more details, see the [docs/](docs/) directory and the scripts listed above. If you encounter issues, check your environment variables, database connection, and that all dependencies are installed.
