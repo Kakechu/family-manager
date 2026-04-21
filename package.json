@@ -2,7 +2,11 @@
 	"name": "family-manager",
 	"version": "0.1.0",
 	"private": true,
-	"workspaces": ["apps/api", "apps/web", "packages/shared"],
+	"workspaces": [
+		"apps/api",
+		"apps/web",
+		"packages/shared"
+	],
 	"scripts": {
 		"dev:api": "npm run dev --workspace @family-manager/api",
 		"dev:web": "npm run dev --workspace @family-manager/web",
@@ -14,9 +18,14 @@
 		"format:check": "npm run format:check --workspaces"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "^1.9.0",
+		"@types/cookie-parser": "^1.4.10",
+		"@types/cors": "^2.8.19",
+		"@types/express": "^5.0.6",
+		"@types/jsonwebtoken": "^9.0.10",
+		"@types/node": "^25.6.0",
 		"typescript": "^5.6.0",
-		"vitest": "^1.6.0",
-		"@biomejs/biome": "^1.9.0"
+		"vitest": "^1.6.0"
 	},
 	"prisma": {
 		"schema": "prisma/schema/schema.prisma",
